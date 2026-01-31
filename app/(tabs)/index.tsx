@@ -407,12 +407,13 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 60,
+    top: 16,
     left: 16,
     right: 16,
     flexDirection: 'row',
     gap: 8,
     zIndex: 10,
+    paddingTop: 44,
   },
   searchBarWrapper: {
     flex: 1,
