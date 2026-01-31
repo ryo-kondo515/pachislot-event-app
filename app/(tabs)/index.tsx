@@ -22,7 +22,7 @@ export default function MapScreen() {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [mapHtml, setMapHtml] = useState<string>('');
   const [sortedStores, setSortedStores] = useState<Store[]>([]);
-  const { data: storesData, isLoading: storesLoading } = trpc.stores.list.useQuery();
+  const { data: storesData, isLoading: storesLoading, error: storesError } = trpc.stores.list.useQuery();
   const { location, loading: locationLoading, getCurrentLocation } = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -207,7 +207,13 @@ export default function MapScreen() {
               <Text style={[{ marginTop: 10, color: colors.muted }]}>店舗情報を読み込んでいます...</Text>
             </View>
           )}
-          {!storesLoading && sortedStores.length === 0 && (
+          {storesError && (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={[{ color: colors.error, fontSize: 16, fontWeight: 'bold' }]}>エラーが発生しました</Text>
+              <Text style={[{ marginTop: 10, color: colors.muted, fontSize: 12 }]}>{storesError.message}</Text>
+            </View>
+          )}
+          {!storesLoading && !storesError && sortedStores.length === 0 && (
             <View style={{ padding: 20, alignItems: 'center' }}>
               <Text style={[{ color: colors.muted }]}>店舗情報がありません</Text>
               <Text style={[{ marginTop: 10, color: colors.muted, fontSize: 12 }]}>APIデータ: {storesData ? storesData.length : 0}件</Text>
