@@ -1,6 +1,5 @@
 import { useRef, useState, useCallback } from 'react';
 import { Text, View, Pressable, StyleSheet, Platform, Dimensions } from 'react-native';
-import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
@@ -10,10 +9,26 @@ import { useColors } from '@/hooks/use-colors';
 import { mockStores, getHotLevelColor, getHotLevelSize, getHotLevelLabel } from '@/data/mock-data';
 import { Store, HotLevel } from '@/types';
 
+// 条件付きインポート: Webでは地図を使用しない
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_DEFAULT: any = null;
+
+if (Platform.OS !== 'web') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+    PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
+  } catch (e) {
+    console.warn('react-native-maps not available');
+  }
+}
+
 const { width, height } = Dimensions.get('window');
 
 // 東京駅を中心とした初期表示領域
-const INITIAL_REGION: Region = {
+const INITIAL_REGION = {
   latitude: 35.6812,
   longitude: 139.7671,
   latitudeDelta: 0.15,
@@ -23,7 +38,7 @@ const INITIAL_REGION: Region = {
 export default function MapScreen() {
   const colors = useColors();
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
 
   const handleMarkerPress = useCallback((store: Store) => {
@@ -38,7 +53,7 @@ export default function MapScreen() {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      router.push(`/store/${selectedStore.id}`);
+      router.push(`/store/${selectedStore.id}` as any);
     }
   }, [selectedStore, router]);
 
@@ -47,12 +62,61 @@ export default function MapScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     // 現在地に移動（デモでは東京駅に戻る）
-    mapRef.current?.animateToRegion(INITIAL_REGION, 500);
+    if (mapRef.current && Platform.OS !== 'web') {
+      mapRef.current.animateToRegion(INITIAL_REGION, 500);
+    }
   }, []);
 
   const closePreview = useCallback(() => {
     setSelectedStore(null);
   }, []);
+
+  // Web用の代替UI
+  if (Platform.OS === 'web' || !MapView) {
+    return (
+      <ScreenContainer className="flex-1 items-center justify-center p-6">
+        <View style={[styles.webFallback, { backgroundColor: colors.surface }]}>
+          <IconSymbol name="map.fill" size={64} color={colors.muted} />
+          <Text style={[styles.webFallbackTitle, { color: colors.foreground }]}>
+            地図機能
+          </Text>
+          <Text style={[styles.webFallbackText, { color: colors.muted }]}>
+            地図機能はモバイルアプリでご利用いただけます。{'\n'}
+            Expo Goアプリでこのプロジェクトを開いてください。
+          </Text>
+          <View style={styles.storeList}>
+            {mockStores.slice(0, 5).map((store) => (
+              <Pressable
+                key={store.id}
+                onPress={() => router.push(`/store/${store.id}` as any)}
+                style={({ pressed }) => [
+                  styles.storeListItem,
+                  { backgroundColor: colors.background },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.storeListDot,
+                    { backgroundColor: getHotLevelColor(store.hotLevel) },
+                  ]}
+                />
+                <View style={styles.storeListContent}>
+                  <Text style={[styles.storeListName, { color: colors.foreground }]}>
+                    {store.name}
+                  </Text>
+                  <Text style={[styles.storeListAddress, { color: colors.muted }]}>
+                    {store.address}
+                  </Text>
+                </View>
+                <IconSymbol name="chevron.right" size={20} color={colors.muted} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -371,5 +435,51 @@ const styles = StyleSheet.create({
   tapHintText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  // Web用フォールバックスタイル
+  webFallback: {
+    width: '100%',
+    maxWidth: 500,
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 16,
+  },
+  webFallbackTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  webFallbackText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  storeList: {
+    width: '100%',
+    marginTop: 16,
+    gap: 8,
+  },
+  storeListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  storeListDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  storeListContent: {
+    flex: 1,
+  },
+  storeListName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  storeListAddress: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });
