@@ -1,37 +1,68 @@
-import { useRef, useState, useCallback } from 'react';
-import { Text, View, Pressable, StyleSheet, Platform, Dimensions } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { Text, View, Pressable, StyleSheet, Platform, ScrollView } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { Asset } from 'expo-asset';
 
-import { ScreenContainer } from '@/components/screen-container';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColors } from '@/hooks/use-colors';
-import { mockStores, getHotLevelColor, getHotLevelSize, getHotLevelLabel } from '@/data/mock-data';
-import { Store, HotLevel } from '@/types';
-
-const { width, height } = Dimensions.get('window');
-
-// 東京駅を中心とした初期表示領域
-const INITIAL_REGION = {
-  latitude: 35.6812,
-  longitude: 139.7671,
-  latitudeDelta: 0.15,
-  longitudeDelta: 0.15,
-};
+import { mockStores, getHotLevelColor, getHotLevelLabel } from '@/data/mock-data';
+import { Store } from '@/types';
 
 export default function MapScreen() {
   const colors = useColors();
   const router = useRouter();
-  const mapRef = useRef<any>(null);
+  const webViewRef = useRef<WebView>(null);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [mapHtml, setMapHtml] = useState<string>('');
 
-  const handleMarkerPress = useCallback((store: Store) => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  // HTMLファイルを読み込む
+  useEffect(() => {
+    async function loadMapHtml() {
+      try {
+        const asset = Asset.fromModule(require('@/assets/html/map.html'));
+        await asset.downloadAsync();
+        const response = await fetch(asset.localUri || asset.uri);
+        const html = await response.text();
+        setMapHtml(html);
+      } catch (error) {
+        console.error('Failed to load map HTML:', error);
+      }
     }
-    setSelectedStore(store);
+    loadMapHtml();
   }, []);
+
+  // 地図が読み込まれたら店舗データを送信
+  const handleMapReady = useCallback(() => {
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'setStores',
+        stores: mockStores
+      }));
+    }
+  }, []);
+
+  // WebViewからのメッセージを処理
+  const handleMessage = useCallback((event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      
+      if (data.type === 'mapReady') {
+        handleMapReady();
+      } else if (data.type === 'markerClick') {
+        if (Platform.OS !== 'web') {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        const store = mockStores.find(s => s.id === data.store.id);
+        if (store) {
+          setSelectedStore(store);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse message:', error);
+    }
+  }, [handleMapReady]);
 
   const handleStoreDetailPress = useCallback(() => {
     if (selectedStore) {
@@ -46,63 +77,87 @@ export default function MapScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    // 現在地に移動（デモでは東京駅に戻る）
-    if (mapRef.current) {
-      mapRef.current.animateToRegion(INITIAL_REGION, 500);
+    // 東京駅に戻る
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'centerMap',
+        latitude: 35.6812,
+        longitude: 139.7671,
+        zoom: 12
+      }));
     }
   }, []);
 
   const closePreview = useCallback(() => {
     setSelectedStore(null);
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'closePreview'
+      }));
+    }
   }, []);
+
+  // Web環境ではWebViewが使えないため、店舗リスト表示
+  if (Platform.OS === 'web') {
+    return (
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.webContainer}>
+          <Text style={[styles.webTitle, { color: colors.foreground }]}>店舗一覧</Text>
+          <Text style={[styles.webSubtitle, { color: colors.muted }]}>
+            モバイルアプリで地図表示が利用できます
+          </Text>
+          {mockStores.map((store) => (
+            <Pressable
+              key={store.id}
+              onPress={() => router.push(`/store/${store.id}` as any)}
+              style={({ pressed }) => [
+                styles.storeCard,
+                { backgroundColor: colors.surface },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <View style={styles.storeHeader}>
+                <View
+                  style={[
+                    styles.hotIndicator,
+                    { backgroundColor: getHotLevelColor(store.hotLevel) },
+                  ]}
+                />
+                <Text style={[styles.storeCardName, { color: colors.foreground }]}>
+                  {store.name}
+                </Text>
+              </View>
+              <Text style={[styles.storeCardAddress, { color: colors.muted }]}>
+                {store.address}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  if (!mapHtml) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.foreground }]}>
+          地図を読み込んでいます...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
+      <WebView
+        ref={webViewRef}
+        source={{ html: mapHtml }}
         style={styles.map}
-        provider={PROVIDER_DEFAULT}
-        initialRegion={INITIAL_REGION}
-        showsUserLocation
-        showsMyLocationButton={false}
-        onPress={() => setSelectedStore(null)}
-      >
-        {mockStores.map((store) => (
-          <Marker
-            key={store.id}
-            coordinate={{
-              latitude: store.latitude,
-              longitude: store.longitude,
-            }}
-            onPress={() => handleMarkerPress(store)}
-          >
-            <View style={styles.markerContainer}>
-              <View
-                style={[
-                  styles.marker,
-                  {
-                    backgroundColor: getHotLevelColor(store.hotLevel),
-                    width: getHotLevelSize(store.hotLevel),
-                    height: getHotLevelSize(store.hotLevel),
-                    borderRadius: getHotLevelSize(store.hotLevel) / 2,
-                  },
-                ]}
-              >
-                <IconSymbol
-                  name="flame.fill"
-                  size={getHotLevelSize(store.hotLevel) * 0.5}
-                  color="#FFFFFF"
-                />
-              </View>
-              {store.isPremium && (
-                <View style={styles.premiumBadge}>
-                  <Text style={styles.premiumText}>★</Text>
-                </View>
-              )}
-            </View>
-          </Marker>
-        ))}
-      </MapView>
+        onMessage={handleMessage}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+      />
 
       {/* 現在地ボタン */}
       <Pressable
@@ -120,16 +175,16 @@ export default function MapScreen() {
       <View style={[styles.legend, { backgroundColor: colors.surface }]}>
         <Text style={[styles.legendTitle, { color: colors.foreground }]}>アツさレベル</Text>
         <View style={styles.legendItems}>
-          {([5, 4, 3, 2, 1] as HotLevel[]).map((level) => (
+          {[5, 4, 3, 2, 1].map((level) => (
             <View key={level} style={styles.legendItem}>
               <View
                 style={[
                   styles.legendDot,
-                  { backgroundColor: getHotLevelColor(level) },
+                  { backgroundColor: getHotLevelColor(level as any) },
                 ]}
               />
               <Text style={[styles.legendText, { color: colors.muted }]}>
-                {getHotLevelLabel(level)}
+                {getHotLevelLabel(level as any)}
               </Text>
             </View>
           ))}
@@ -214,35 +269,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   map: {
-    width: width,
-    height: height,
+    flex: 1,
   },
-  markerContainer: {
+  loadingText: {
+    textAlign: 'center',
+    marginTop: 100,
+    fontSize: 16,
+  },
+  webContainer: {
+    padding: 16,
+  },
+  webTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  webSubtitle: {
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  storeCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  storeHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
   },
-  marker: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+  hotIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
-  premiumBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#FFD700',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+  storeCardName: {
+    fontSize: 16,
+    fontWeight: '600',
   },
-  premiumText: {
-    fontSize: 10,
-    color: '#000',
+  storeCardAddress: {
+    fontSize: 13,
   },
   locationButton: {
     position: 'absolute',

@@ -47,3 +47,11 @@
 - [x] 地図画面の実装（インタラクティブマップ）
 - [x] app.config.tsの更新（react-native-mapsプラグイン追加）
 - [x] Development Build用の設定完了
+
+## Leaflet地図実装（無料・Expo Go対応）
+
+- [x] react-native-mapsの削除
+- [x] Leaflet HTMLファイルの作成
+- [x] WebView地図コンポーネントの実装
+- [x] マーカー表示とインタラクション機能
+- [x] Expo Goでの動作確認

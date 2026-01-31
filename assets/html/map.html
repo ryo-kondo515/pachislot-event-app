@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      width: 100vw;
+      height: 100vh;
+    }
+    .custom-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-size: 16px;
+    }
+    .premium-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #FFD700;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // 地図の初期化
+    const map = L.map('map', {
+      zoomControl: true,
+      attributionControl: false
+    }).setView([35.6812, 139.7671], 12);
+
+    // OpenStreetMapタイルレイヤーを追加
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    // マーカーデータを保持
+    let markers = [];
+    let selectedMarkerId = null;
+
+    // カスタムアイコンを作成
+    function createCustomIcon(hotLevel, isPremium) {
+      const colors = {
+        5: '#FF1744',
+        4: '#FF6F00',
+        3: '#FFD700',
+        2: '#4CAF50',
+        1: '#2196F3'
+      };
+      const sizes = {
+        5: 48,
+        4: 40,
+        3: 32,
+        2: 28,
+        1: 24
+      };
+      
+      const color = colors[hotLevel] || '#2196F3';
+      const size = sizes[hotLevel] || 24;
+      
+      const premiumBadge = isPremium ? '<div class="premium-badge">★</div>' : '';
+      
+      return L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="position:relative; width:${size}px; height:${size}px; background:${color}; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+          <span style="color:white; font-size:${size * 0.5}px;">🔥</span>
+          ${premiumBadge}
+        </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+    }
+
+    // マーカーを追加
+    function addMarkers(stores) {
+      // 既存のマーカーをクリア
+      markers.forEach(m => map.removeLayer(m.marker));
+      markers = [];
+
+      stores.forEach(store => {
+        const marker = L.marker([store.latitude, store.longitude], {
+          icon: createCustomIcon(store.hotLevel, store.isPremium)
+        }).addTo(map);
+
+        marker.on('click', () => {
+          selectedMarkerId = store.id;
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'markerClick',
+            store: store
+          }));
+        });
+
+        markers.push({ id: store.id, marker: marker });
+      });
+    }
+
+    // React Nativeからのメッセージを受信
+    window.addEventListener('message', (event) => {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === 'setStores') {
+        addMarkers(data.stores);
+      } else if (data.type === 'centerMap') {
+        map.setView([data.latitude, data.longitude], data.zoom || 12);
+      } else if (data.type === 'closePreview') {
+        selectedMarkerId = null;
+      }
+    });
+
+    // 初期化完了を通知
+    window.ReactNativeWebView.postMessage(JSON.stringify({
+      type: 'mapReady'
+    }));
+  </script>
+</body>
+</html>
