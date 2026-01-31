@@ -1,5 +1,5 @@
-import axios from "axios";
 import * as cheerio from "cheerio";
+import { fetchPageWithPuppeteer } from "./puppeteer-utils";
 
 export interface ScrapedEvent {
   storeName: string;
@@ -17,16 +17,19 @@ export async function scrapeHallNavi(): Promise<ScrapedEvent[]> {
   const events: ScrapedEvent[] = [];
 
   try {
-    console.log("[HallNavi] Starting scraping...");
+    console.log("[HallNavi] Starting scraping with Puppeteer...");
     
-    const response = await axios.get("https://hall-navi.com/", {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
+    const html = await fetchPageWithPuppeteer("https://hall-navi.com/", {
       timeout: 30000,
+      retries: 3,
     });
 
-    const $ = cheerio.load(response.data);
+    if (!html) {
+      console.error("[HallNavi] Failed to fetch HTML");
+      return [];
+    }
+
+    const $ = cheerio.load(html);
     const currentYear = new Date().getFullYear();
 
     // 結果レポートのリンクを取得

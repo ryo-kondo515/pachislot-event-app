@@ -1,5 +1,5 @@
-import axios from "axios";
 import * as cheerio from "cheerio";
+import { fetchPageWithPuppeteer } from "./puppeteer-utils";
 
 export interface ScrapedEvent {
   storeName: string;
@@ -51,13 +51,19 @@ export async function scrapeDrillerMaguro(): Promise<ScrapedEvent[]> {
   const events: ScrapedEvent[] = [];
 
   try {
-    const response = await axios.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-      },
+    console.log("[DrillerMaguro] Starting scraping with Puppeteer...");
+    const html = await fetchPageWithPuppeteer(url, {
+      waitForSelector: "a[href*='/interview/']",
+      timeout: 30000,
+      retries: 3,
     });
 
-    const $ = cheerio.load(response.data);
+    if (!html) {
+      console.error("[DrillerMaguro] Failed to fetch HTML");
+      return [];
+    }
+
+    const $ = cheerio.load(html);
     const currentYear = new Date().getFullYear();
 
     // 取材結果一覧のリンクを取得
