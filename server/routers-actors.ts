@@ -1,4 +1,6 @@
-import { router, publicProcedure } from "./_core/trpc";
+import { publicProcedure, router } from "./_core/trpc";
+import { calculateActorRankings, getActorRankings } from "./ranking";
+import { z } from "zod";
 import { getDb } from "./db";
 import { actors, events } from "../drizzle/schema";
 import { eq, sql, desc } from "drizzle-orm";
@@ -72,4 +74,16 @@ export const actorsRouter = router({
         events: actorEvents,
       };
     }),
+
+  // 演者ランキングを取得
+  rankings: publicProcedure
+    .input(z.object({ limit: z.number().optional().default(10) }).optional())
+    .query(async ({ input }) => {
+      return await getActorRankings(input?.limit || 10);
+    }),
+
+  // ランキングスコアを再計算
+  calculateRankings: publicProcedure.mutation(async () => {
+    return await calculateActorRankings();
+  }),
 });

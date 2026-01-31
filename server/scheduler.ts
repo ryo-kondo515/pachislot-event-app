@@ -15,8 +15,14 @@ export function startScheduler() {
     try {
       const result = await runAllScrapers();
       console.log('[Scheduler] Scraping completed successfully:', result);
+      
+      // 演者ランキングを再計算
+      console.log('[Scheduler] Calculating actor rankings...');
+      const { calculateActorRankings } = await import('./ranking.js');
+      const rankingResult = await calculateActorRankings();
+      console.log('[Scheduler] Actor rankings calculated:', rankingResult);
     } catch (error) {
-      console.error('[Scheduler] Scraping failed:', error);
+      console.error('[Scheduler] Daily job failed:', error);
     }
   }, {
     timezone: 'Asia/Tokyo'
@@ -38,8 +44,14 @@ export function startDevScheduler() {
     try {
       const result = await runAllScrapers();
       console.log('[Dev Scheduler] Scraping completed:', result);
+      
+      // 演者ランキングを再計算
+      console.log('[Dev Scheduler] Calculating actor rankings...');
+      const { calculateActorRankings } = await import('./ranking.js');
+      const rankingResult = await calculateActorRankings();
+      console.log('[Dev Scheduler] Actor rankings calculated:', rankingResult);
     } catch (error) {
-      console.error('[Dev Scheduler] Scraping failed:', error);
+      console.error('[Dev Scheduler] Job failed:', error);
     }
   }, {
     timezone: 'Asia/Tokyo'

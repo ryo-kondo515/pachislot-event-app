@@ -1,10 +1,11 @@
-import { ScrollView, Text, View, TouchableOpacity, FlatList } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, FlatList, Pressable } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 interface Actor {
   id: number;
@@ -28,6 +29,7 @@ export default function ActorsScreen() {
 
   // 演者一覧を取得
   const actorsQuery = trpc.actors.list.useQuery();
+  const rankingsQuery = trpc.actors.rankings.useQuery({ limit: 10 });
 
   useEffect(() => {
     if (actorsQuery.data) {
@@ -131,12 +133,62 @@ export default function ActorsScreen() {
 
   const favoriteActors = actors.filter(a => favoriteActorIds.includes(a.id));
   const otherActors = actors.filter(a => !favoriteActorIds.includes(a.id));
+  const rankings = rankingsQuery.data || [];
 
   return (
     <ScreenContainer className="p-6">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        {/* ランキングセクション */}
+        {rankings.length > 0 && (
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{ fontSize: 24, fontWeight: "bold", color: colors.foreground, marginBottom: 16 }}>
+              演者ランキング TOP 10
+            </Text>
+            {rankings.map((actor, index) => (
+              <View
+                key={actor.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 16,
+                  marginBottom: 8,
+                  backgroundColor: colors.surface,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 24, fontWeight: "bold", color: colors.primary, marginRight: 12, width: 32 }}>
+                  {index + 1}
+                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 18, fontWeight: "600", color: colors.foreground }}>
+                    {actor.name}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: colors.muted }}>
+                    スコア: {actor.rankScore} | 来店回数: {actor.eventCount}回
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => toggleFavorite(actor.id)}
+                  style={({ pressed }) => [
+                    { opacity: pressed ? 0.6 : 1 },
+                  ]}
+                >
+                  <IconSymbol
+                    name="heart.fill"
+                    size={24}
+                    color={favoriteActorIds.includes(actor.id) ? colors.error : colors.muted}
+                  />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* 全演者一覧 */}
         <Text style={{ fontSize: 24, fontWeight: "bold", color: colors.foreground, marginBottom: 8 }}>
-          演者一覧
+          全演者一覧
         </Text>
         <Text style={{ fontSize: 14, color: colors.muted, marginBottom: 20 }}>
           タップしてお気に入りに追加
