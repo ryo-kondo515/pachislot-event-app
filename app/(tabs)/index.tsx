@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Text, View, Pressable, StyleSheet, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { Text, View, Pressable, StyleSheet, Platform, ScrollView, ActivityIndicator, Modal } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -8,9 +8,11 @@ import { Asset } from 'expo-asset';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColors } from '@/hooks/use-colors';
 import { mockStores, getHotLevelColor, getHotLevelLabel } from '@/data/mock-data';
-import { Store } from '@/types';
+import { Store, HotLevel } from '@/types';
 import { useLocation } from '@/hooks/use-location';
 import { calculateDistance, formatDistance } from '@/lib/location-utils';
+import { SearchBar } from '@/components/search-bar';
+import { FilterPanel, FilterOptions } from '@/components/filter-panel';
 
 export default function MapScreen() {
   const colors = useColors();
@@ -20,6 +22,13 @@ export default function MapScreen() {
   const [mapHtml, setMapHtml] = useState<string>('');
   const [sortedStores, setSortedStores] = useState(mockStores);
   const { location, loading: locationLoading, getCurrentLocation } = useLocation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<FilterOptions>({
+    hotLevels: [],
+    areas: [],
+  });
+  const [filteredStores, setFilteredStores] = useState(mockStores);
 
   // HTMLファイルを読み込む
   useEffect(() => {
@@ -37,15 +46,51 @@ export default function MapScreen() {
     loadMapHtml();
   }, []);
 
+  // 検索・フィルター処理
+  useEffect(() => {
+    let result = mockStores;
+
+    // 検索クエリでフィルタリング
+    if (searchQuery) {
+      result = result.filter(store =>
+        store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        store.address.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // アツさレベルでフィルタリング
+    if (filters.hotLevels.length > 0) {
+      result = result.filter(store => filters.hotLevels.includes(store.hotLevel));
+    }
+
+    // エリアでフィルタリング
+    if (filters.areas.length > 0) {
+      result = result.filter(store =>
+        filters.areas.some(area => store.address.includes(area))
+      );
+    }
+
+    setFilteredStores(result);
+    setSortedStores(result);
+
+    // 地図にフィルタリング済みデータを送信
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'setStores',
+        stores: result
+      }));
+    }
+  }, [searchQuery, filters]);
+
   // 地図が読み込まれたら店舗データを送信
   const handleMapReady = useCallback(() => {
     if (webViewRef.current) {
       webViewRef.current.postMessage(JSON.stringify({
         type: 'setStores',
-        stores: mockStores
+        stores: filteredStores
       }));
     }
-  }, []);
+  }, [filteredStores]);
 
   // WebViewからのメッセージを処理
   const handleMessage = useCallback((event: any) => {
@@ -177,6 +222,42 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
+      {/* 検索バーとフィルター */}
+      <View style={[styles.searchContainer, { backgroundColor: colors.background }]}>
+        <View style={styles.searchBarWrapper}>
+          <SearchBar
+            placeholder="店舗名、住所で検索"
+            onSearch={setSearchQuery}
+          />
+        </View>
+        <Pressable
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+            setShowFilters(true);
+          }}
+          style={({ pressed }: { pressed: boolean }) => [
+            styles.filterButton,
+            { backgroundColor: colors.surface },
+            pressed && { opacity: 0.8 },
+            (filters.hotLevels.length > 0 || filters.areas.length > 0) && {
+              backgroundColor: colors.primary,
+            },
+          ]}
+        >
+          <IconSymbol
+            name="slider.horizontal.3"
+            size={24}
+            color={
+              filters.hotLevels.length > 0 || filters.areas.length > 0
+                ? '#FFFFFF'
+                : colors.foreground
+            }
+          />
+        </Pressable>
+      </View>
+
       <WebView
         ref={webViewRef}
         source={{ html: mapHtml }}
@@ -302,6 +383,20 @@ export default function MapScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* フィルターパネル */}
+      <Modal
+        visible={showFilters}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowFilters(false)}
+      >
+        <FilterPanel
+          filters={filters}
+          onFilterChange={setFilters}
+          onClose={() => setShowFilters(false)}
+        />
+      </Modal>
     </View>
   );
 }
@@ -309,6 +404,30 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    gap: 8,
+    zIndex: 10,
+  },
+  searchBarWrapper: {
+    flex: 1,
+  },
+  filterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   map: {
     flex: 1,

@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { ScreenContainer } from '@/components/screen-container';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColors } from '@/hooks/use-colors';
+import { useFavorites } from '@/hooks/use-favorites';
 import { mockActors } from '@/data/mock-data';
 import { Actor } from '@/types';
 
@@ -27,7 +28,15 @@ const mockFavoriteMachines = [
 export default function FavoritesScreen() {
   const colors = useColors();
   const [activeTab, setActiveTab] = useState<TabType>('actors');
-  const [favoriteActors, setFavoriteActors] = useState<string[]>(['actor-1', 'actor-3']);
+  const {
+    favoriteActors,
+    favoriteAreas,
+    favoriteMachines,
+    loading,
+    toggleFavoriteActor,
+    toggleFavoriteArea,
+    toggleFavoriteMachine,
+  } = useFavorites();
 
   const handleTabChange = useCallback((tab: TabType) => {
     if (Platform.OS !== 'web') {
@@ -36,16 +45,12 @@ export default function FavoritesScreen() {
     setActiveTab(tab);
   }, []);
 
-  const toggleFavoriteActor = useCallback((actorId: string) => {
+  const handleToggleFavoriteActor = useCallback((actorId: string) => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    setFavoriteActors((prev) =>
-      prev.includes(actorId)
-        ? prev.filter((id) => id !== actorId)
-        : [...prev, actorId]
-    );
-  }, []);
+    toggleFavoriteActor(actorId);
+  }, [toggleFavoriteActor]);
 
   const renderActorItem = useCallback(
     ({ item }: { item: Actor }) => {
@@ -64,7 +69,7 @@ export default function FavoritesScreen() {
             </Text>
           </View>
           <Pressable
-            onPress={() => toggleFavoriteActor(item.id)}
+            onPress={() => handleToggleFavoriteActor(item.id)}
             style={({ pressed }) => [
               styles.favoriteButton,
               pressed && { opacity: 0.6 },
@@ -79,7 +84,7 @@ export default function FavoritesScreen() {
         </View>
       );
     },
-    [colors, favoriteActors, toggleFavoriteActor]
+    [colors, favoriteActors, handleToggleFavoriteActor]
   );
 
   const renderAreaItem = useCallback(

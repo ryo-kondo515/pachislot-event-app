@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { ScreenContainer } from '@/components/screen-container';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColors } from '@/hooks/use-colors';
+import { useNotifications } from '@/hooks/use-notifications';
 
 interface SettingItemProps {
   icon: string;
@@ -46,8 +47,12 @@ function SettingItem({ icon, iconColor, title, subtitle, onPress, rightElement }
 
 export default function SettingsScreen() {
   const colors = useColors();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [favoriteActorAlert, setFavoriteActorAlert] = useState(true);
+  const {
+    settings,
+    permissionStatus,
+    updateSettings,
+    scheduleTestNotification,
+  } = useNotifications();
   const [nearbyEventAlert, setNearbyEventAlert] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(true);
 
@@ -86,8 +91,8 @@ export default function SettingsScreen() {
             subtitle="通知を受け取る"
             rightElement={
               <Switch
-                value={notificationsEnabled}
-                onValueChange={(value) => handleToggle(setNotificationsEnabled, value)}
+                value={settings.enabled}
+                onValueChange={(value) => updateSettings({ enabled: value })}
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#FFFFFF"
               />
@@ -101,11 +106,11 @@ export default function SettingsScreen() {
             subtitle="登録演者の来店時に通知"
             rightElement={
               <Switch
-                value={favoriteActorAlert}
-                onValueChange={(value) => handleToggle(setFavoriteActorAlert, value)}
+                value={settings.favoriteActorEvents}
+                onValueChange={(value) => updateSettings({ favoriteActorEvents: value })}
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#FFFFFF"
-                disabled={!notificationsEnabled}
+                disabled={!settings.enabled}
               />
             }
           />
@@ -121,7 +126,7 @@ export default function SettingsScreen() {
                 onValueChange={(value) => handleToggle(setNearbyEventAlert, value)}
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#FFFFFF"
-                disabled={!notificationsEnabled}
+                disabled={!settings.enabled}
               />
             }
           />

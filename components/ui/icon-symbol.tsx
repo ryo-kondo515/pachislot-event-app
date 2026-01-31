@@ -31,6 +31,8 @@ const MAPPING = {
   "person.fill": "person",
   "bell.fill": "notifications",
   "flame.fill": "whatshot",
+  "xmark.circle.fill": "cancel",
+  "slider.horizontal.3": "tune",
 } as IconMapping;
 
 /**
