@@ -55,32 +55,42 @@ export async function scrapeDrillerMaguro(): Promise<ScrapedEvent[]> {
     const currentYear = new Date().getFullYear();
 
     // 最新取材結果セクションから情報を抽出
-    // セレクタは実際のHTML構造に合わせて調整が必要
     $("a[href*='/interview/']").each((_, element) => {
       const $el = $(element);
       const href = $el.attr("href");
-      const text = $el.text().trim();
+      let text = $el.text();
 
       if (!href || !text) return;
 
-      // テキストから情報を抽出
-      // 例：「1月25日(日)アビバ湘南台ジャンドリ結果まとめ【注文結果】」
-      const dateMatch = text.match(/(\d+月\d+日)/);
-      const storeMatch = text.match(/\d+日\)(.+?)(マグロ|ジャンドリ|極上|あがり|海鮮ドン|イロドリル|夢ドリ|山狩)/);
-      const eventTypeMatch = text.match(/(マグロ|ジャンドリ|極上|あがり|海鮮ドン|イロドリル|夢ドリ|山狩)/);
+      // 改行と余分な空白を削除
+      text = text.replace(/\s+/g, " ").trim();
 
-      if (!dateMatch || !storeMatch || !eventTypeMatch) return;
-
-      const eventDate = parseDateString(dateMatch[1], currentYear);
-      const storeName = storeMatch[1].trim();
-      const eventType = eventTypeMatch[1];
-
-      // エリア情報を取得（サイドバーやテキストから）
+      // エリア情報を先に抽出（テキストの先頭にある）
+      const areaMatch = text.match(/^(東京|神奈川|埼玉|千葉|宮城|北海道)/);
       let area = "不明";
-      const areaMatch = $el.closest("div, li").text().match(/(東京|神奈川|埼玉|千葉|宮城|北海道)/);
       if (areaMatch) {
         area = areaMatch[1];
+        // エリア名を削除して残りのテキストを取得
+        text = text.substring(areaMatch[0].length).trim();
       }
+
+      // テキストから情報を抽出
+      // 例：「1月25日(日)アビバ湘南台ジャンドリ結果まとめ【注文結果】」
+      const dateMatch = text.match(/(\d+)月(\d+)日/);
+      if (!dateMatch) return;
+
+      // イベントタイプを検索
+      const eventTypeMatch = text.match(/(マグロ|ジャンドリ|極上|あがり|海鮮ドン|イロドリル|夢ドリ|山狩)/);
+      if (!eventTypeMatch) return;
+
+      const eventType = eventTypeMatch[1];
+
+      // 店舗名を抽出（日付の後、イベントタイプの前）
+      const storeMatch = text.match(/\d+日\(.*?\)(.+?)(マグロ|ジャンドリ|極上|あがり|海鮮ドン|イロドリル|夢ドリ|山狩)/);
+      if (!storeMatch) return;
+
+      const storeName = storeMatch[1].trim();
+      const eventDate = parseDateString(`${dateMatch[1]}月${dateMatch[2]}日`, currentYear);
 
       const fullUrl = href.startsWith("http") ? href : `https://drillermaguro.com${href}`;
 
