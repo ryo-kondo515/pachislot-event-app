@@ -9,6 +9,7 @@ export interface Store {
   machineCount: number;
   isPremium: boolean;
   hotLevel: HotLevel;
+  distance?: number; // 現在地からの距離（km）
 }
 
 // アツさレベル（1-5）

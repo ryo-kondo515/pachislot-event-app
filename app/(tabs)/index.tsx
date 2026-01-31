@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Text, View, Pressable, StyleSheet, Platform, ScrollView } from 'react-native';
+import { Text, View, Pressable, StyleSheet, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -9,6 +9,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColors } from '@/hooks/use-colors';
 import { mockStores, getHotLevelColor, getHotLevelLabel } from '@/data/mock-data';
 import { Store } from '@/types';
+import { useLocation } from '@/hooks/use-location';
+import { calculateDistance, formatDistance } from '@/lib/location-utils';
 
 export default function MapScreen() {
   const colors = useColors();
@@ -16,6 +18,8 @@ export default function MapScreen() {
   const webViewRef = useRef<WebView>(null);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [mapHtml, setMapHtml] = useState<string>('');
+  const [sortedStores, setSortedStores] = useState(mockStores);
+  const { location, loading: locationLoading, getCurrentLocation } = useLocation();
 
   // HTMLファイルを読み込む
   useEffect(() => {
@@ -73,20 +77,44 @@ export default function MapScreen() {
     }
   }, [selectedStore, router]);
 
-  const handleCurrentLocation = useCallback(() => {
+  const handleCurrentLocation = useCallback(async () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    // 東京駅に戻る
-    if (webViewRef.current) {
+    
+    // 現在地を取得
+    const userLocation = await getCurrentLocation();
+    
+    if (userLocation && webViewRef.current) {
+      // 地図を現在地に移動
       webViewRef.current.postMessage(JSON.stringify({
         type: 'centerMap',
-        latitude: 35.6812,
-        longitude: 139.7671,
-        zoom: 12
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        zoom: 13
+      }));
+      
+      // 距離順にソート
+      const storesWithDistance = mockStores.map(store => ({
+        ...store,
+        distance: calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          store.latitude,
+          store.longitude
+        )
+      }));
+      
+      const sorted = storesWithDistance.sort((a, b) => a.distance - b.distance);
+      setSortedStores(sorted);
+      
+      // ソート済みデータを地図に送信
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'setStores',
+        stores: sorted
       }));
     }
-  }, []);
+  }, [getCurrentLocation]);
 
   const closePreview = useCallback(() => {
     setSelectedStore(null);
@@ -162,13 +190,19 @@ export default function MapScreen() {
       {/* 現在地ボタン */}
       <Pressable
         onPress={handleCurrentLocation}
+        disabled={locationLoading}
         style={({ pressed }) => [
           styles.locationButton,
           { backgroundColor: colors.surface },
           pressed && { opacity: 0.8 },
+          locationLoading && { opacity: 0.6 },
         ]}
       >
-        <IconSymbol name="location.fill" size={24} color={colors.primary} />
+        {locationLoading ? (
+          <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+          <IconSymbol name="location.fill" size={24} color={colors.primary} />
+        )}
       </Pressable>
 
       {/* 凡例 */}
@@ -249,6 +283,14 @@ export default function MapScreen() {
                   {selectedStore.machineCount}台
                 </Text>
               </View>
+              {selectedStore.distance !== undefined && (
+                <View style={styles.infoItem}>
+                  <IconSymbol name="location.fill" size={14} color={colors.muted} />
+                  <Text style={[styles.infoText, { color: colors.muted }]}>
+                    {formatDistance(selectedStore.distance)}
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={[styles.tapHint, { borderTopColor: colors.border }]}>
