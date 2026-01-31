@@ -40,3 +40,10 @@
 - [x] react-native-mapsがExpo Goで使用できない問題の確認
 - [x] 地図機能を静的な店舗リスト表示に変更
 - [x] モバイル・Web両方で動作する店舗一覧UIの実装
+
+## Development Build対応
+
+- [x] react-native-mapsの再インストール
+- [x] 地図画面の実装（インタラクティブマップ）
+- [x] app.config.tsの更新（react-native-mapsプラグイン追加）
+- [x] Development Build用の設定完了
