@@ -66,6 +66,14 @@ export default function MapScreen() {
       }));
       setSortedStores(stores);
       setFilteredStores(stores);
+      
+      // 地図にデータを送信
+      if (webViewRef.current && stores.length > 0) {
+        webViewRef.current.postMessage(JSON.stringify({
+          type: 'setStores',
+          stores: stores
+        }));
+      }
     }
   }, [storesData]);
 
@@ -107,13 +115,13 @@ export default function MapScreen() {
 
   // 地図が読み込まれたら店舗データを送信
   const handleMapReady = useCallback(() => {
-    if (webViewRef.current) {
+    if (webViewRef.current && sortedStores.length > 0) {
       webViewRef.current.postMessage(JSON.stringify({
         type: 'setStores',
-        stores: filteredStores
+        stores: sortedStores
       }));
     }
-  }, [filteredStores]);
+  }, [sortedStores]);
 
   // WebViewからのメッセージを処理
   const handleMessage = useCallback((event: any) => {
