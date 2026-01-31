@@ -23,23 +23,48 @@ export const appRouter = router({
     list: publicProcedure.query(async () => {
       const { getDb } = await import("./db");
       const { stores, events, actors } = await import("../drizzle/schema");
-      const { eq } = await import("drizzle-orm");
+      const { eq, and, gte, lte } = await import("drizzle-orm");
       
       const db = await getDb();
       if (!db) {
         return [];
       }
 
-      // 店舗一覧を取得
+      // 当日の日付を取得（日本時間）
+      const now = new Date();
+      const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
+      const jstDate = new Date(now.getTime() + jstOffset);
+      const todayStart = new Date(jstDate.getFullYear(), jstDate.getMonth(), jstDate.getDate());
+      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+      // 当日のイベントを取得
+      const todayEvents = await db
+        .select()
+        .from(events)
+        .where(
+          and(
+            gte(events.eventDate, todayStart),
+            lte(events.eventDate, todayEnd)
+          )
+        );
+
+      // 当日のイベントがある店舗IDを取得
+      const storeIdsWithEvents = [...new Set(todayEvents.map(e => e.storeId))];
+
+      if (storeIdsWithEvents.length === 0) {
+        return [];
+      }
+
+      // 当日のイベントがある店舗のみを取得
       const storesList = await db.select().from(stores);
+      const storesWithTodayEvents = storesList.filter(store => 
+        storeIdsWithEvents.includes(store.id)
+      );
 
       // 各店舗のイベント情報を取得
       const result = await Promise.all(
-        storesList.map(async (store) => {
-          const storeEvents = await db
-            .select()
-            .from(events)
-            .where(eq(events.storeId, store.id));
+        storesWithTodayEvents.map(async (store) => {
+          const storeEvents = todayEvents.filter(e => e.storeId === store.id);
 
           // 演者情報を取得
           const eventsWithActors = await Promise.all(
