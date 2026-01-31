@@ -34,3 +34,9 @@
 - [x] Expo Goでの地図表示エラーの原因調査
 - [x] react-native-mapsの条件付きインポートロジックを修正
 - [x] 地図コンポーネントの動作確認（実機テスト）
+
+## Expo Go react-native-maps問題
+
+- [x] react-native-mapsがExpo Goで使用できない問題の確認
+- [x] 地図機能を静的な店舗リスト表示に変更
+- [x] モバイル・Web両方で動作する店舗一覧UIの実装
