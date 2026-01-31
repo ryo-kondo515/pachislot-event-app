@@ -14,6 +14,7 @@ import { useLocation } from '@/hooks/use-location';
 import { calculateDistance, formatDistance } from '@/lib/location-utils';
 import { SearchBar } from '@/components/search-bar';
 import { FilterPanel, FilterOptions } from '@/components/filter-panel';
+import { WebMap } from '@/components/web-map';
 
 export default function MapScreen() {
   const colors = useColors();
@@ -192,15 +193,12 @@ export default function MapScreen() {
     }
   }, []);
 
-  // Web環境ではWebViewが使えないため、店舗リスト表示
+  // Web環境でも地図を表示
   if (Platform.OS === 'web') {
     return (
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.webContainer}>
-          <Text style={[styles.webTitle, { color: colors.foreground }]}>店舗一覧</Text>
-          <Text style={[styles.webSubtitle, { color: colors.muted }]}>
-            モバイルアプリで地図表示が利用できます
-          </Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.webTitle, { color: colors.foreground, padding: 16 }]}>店舗一覧（地図表示はWeb版では未対応）</Text>
+        <ScrollView style={{ flex: 1, padding: 16 }}>
           {storesLoading && (
             <View style={{ padding: 20, alignItems: 'center' }}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -245,8 +243,8 @@ export default function MapScreen() {
               </Text>
             </Pressable>
           ))}
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -479,6 +477,20 @@ const styles = StyleSheet.create({
   },
   webContainer: {
     padding: 16,
+  },
+  webSidebar: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 400,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    zIndex: 100,
   },
   webTitle: {
     fontSize: 28,
