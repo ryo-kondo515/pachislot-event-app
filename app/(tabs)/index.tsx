@@ -3,27 +3,13 @@ import { Text, View, Pressable, StyleSheet, Platform, Dimensions } from 'react-n
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
+import { MapView, Marker, PROVIDER_DEFAULT, isMapAvailable } from '@/components/map-view-wrapper';
+
 import { ScreenContainer } from '@/components/screen-container';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColors } from '@/hooks/use-colors';
 import { mockStores, getHotLevelColor, getHotLevelSize, getHotLevelLabel } from '@/data/mock-data';
 import { Store, HotLevel } from '@/types';
-
-// 条件付きインポート: Webでは地図を使用しない
-let MapView: any = null;
-let Marker: any = null;
-let PROVIDER_DEFAULT: any = null;
-
-if (Platform.OS !== 'web') {
-  try {
-    const maps = require('react-native-maps');
-    MapView = maps.default;
-    Marker = maps.Marker;
-    PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
-  } catch (e) {
-    console.warn('react-native-maps not available');
-  }
-}
 
 const { width, height } = Dimensions.get('window');
 
@@ -62,7 +48,7 @@ export default function MapScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     // 現在地に移動（デモでは東京駅に戻る）
-    if (mapRef.current && Platform.OS !== 'web') {
+    if (mapRef.current) {
       mapRef.current.animateToRegion(INITIAL_REGION, 500);
     }
   }, []);
@@ -72,7 +58,7 @@ export default function MapScreen() {
   }, []);
 
   // Web用の代替UI
-  if (Platform.OS === 'web' || !MapView) {
+  if (!isMapAvailable) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center p-6">
         <View style={[styles.webFallback, { backgroundColor: colors.surface }]}>
@@ -118,6 +104,7 @@ export default function MapScreen() {
     );
   }
 
+  // モバイル用の地図UI
   return (
     <View style={styles.container}>
       <MapView

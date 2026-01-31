@@ -28,3 +28,9 @@
 - [x] react-native-mapsをexpo-mapsに置き換え（Expo Go対応）
 - [x] 地図画面のインポート文を修正
 - [x] 地図コンポーネントの動作確認
+
+## Expo Go地図表示問題
+
+- [x] Expo Goでの地図表示エラーの原因調査
+- [x] react-native-mapsの条件付きインポートロジックを修正
+- [x] 地図コンポーネントの動作確認（実機テスト）
