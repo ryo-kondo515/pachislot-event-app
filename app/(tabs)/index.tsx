@@ -407,13 +407,12 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 16,
+    top: 60,
     left: 16,
     right: 16,
     flexDirection: 'row',
     gap: 8,
-    zIndex: 10,
-    paddingTop: 44,
+    zIndex: 100,
   },
   searchBarWrapper: {
     flex: 1,
@@ -475,7 +474,7 @@ const styles = StyleSheet.create({
   },
   locationButton: {
     position: 'absolute',
-    top: 60,
+    top: 130,
     right: 16,
     width: 48,
     height: 48,
@@ -487,10 +486,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+    zIndex: 90,
   },
   legend: {
     position: 'absolute',
-    top: 60,
+    top: 190,
     left: 16,
     padding: 12,
     borderRadius: 12,
@@ -499,6 +499,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+    zIndex: 80,
   },
   legendTitle: {
     fontSize: 12,
@@ -533,6 +534,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
+    zIndex: 95,
   },
   closeButton: {
     position: 'absolute',
