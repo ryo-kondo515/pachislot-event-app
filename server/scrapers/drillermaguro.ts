@@ -24,6 +24,13 @@ export function getHeatLevel(eventType: string): number {
 }
 
 /**
+ * 店舗名とエリアから住所を推測
+ */
+export function guessStoreAddress(storeName: string, area: string): string {
+  return `${area}${storeName}`;
+}
+
+/**
  * 日付文字列（例：1月25日(日)）をYYYY-MM-DD形式に変換
  */
 function parseDateString(dateStr: string, year: number = new Date().getFullYear()): string {
@@ -48,34 +55,29 @@ export async function scrapeDrillerMaguro(): Promise<ScrapedEvent[]> {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
-      timeout: 30000,
     });
 
     const $ = cheerio.load(response.data);
     const currentYear = new Date().getFullYear();
 
-    // 最新取材結果セクションから情報を抽出
+    // 取材結果一覧のリンクを取得
     $("a[href*='/interview/']").each((_, element) => {
-      const $el = $(element);
-      const href = $el.attr("href");
-      let text = $el.text();
+      const href = $(element).attr("href");
+      if (!href) return;
 
-      if (!href || !text) return;
-
+      // リンクテキストから情報を抽出
+      let text = $(element).text().trim();
+      
       // 改行と余分な空白を削除
       text = text.replace(/\s+/g, " ").trim();
 
-      // エリア情報を先に抽出（テキストの先頭にある）
-      const areaMatch = text.match(/^(東京|神奈川|埼玉|千葉|宮城|北海道)/);
-      let area = "不明";
-      if (areaMatch) {
-        area = areaMatch[1];
-        // エリア名を削除して残りのテキストを取得
-        text = text.substring(areaMatch[0].length).trim();
-      }
+      // エリアを検索（最初に出現するエリア名）
+      const areaMatch = text.match(/(東京|神奈川|千葉|埼玉|茨城|群馬|栃木|大阪|京都|兵庫|愛知|福岡|北海道|宮城)/);
+      if (!areaMatch) return;
 
-      // テキストから情報を抽出
-      // 例：「1月25日(日)アビバ湘南台ジャンドリ結果まとめ【注文結果】」
+      const area = areaMatch[1];
+
+      // 日付を検索
       const dateMatch = text.match(/(\d+)月(\d+)日/);
       if (!dateMatch) return;
 
@@ -120,23 +122,4 @@ export async function scrapeDrillerMaguro(): Promise<ScrapedEvent[]> {
     console.error("[DrillerMaguro] Scraping error:", error);
     return [];
   }
-}
-
-/**
- * 店舗名から住所を推測（簡易版）
- * 実際にはGoogle Maps APIやジオコーディングサービスを使用する
- */
-export function guessStoreAddress(storeName: string, area: string): string {
-  // 簡易的な住所推測
-  // 実際の実装では、店舗マスタDBやGoogle Maps APIを使用
-  const areaMap: Record<string, string> = {
-    "東京": "東京都",
-    "神奈川": "神奈川県",
-    "埼玉": "埼玉県",
-    "千葉": "千葉県",
-    "宮城": "宮城県",
-    "北海道": "北海道",
-  };
-
-  return `${areaMap[area] || area}${storeName}`;
 }

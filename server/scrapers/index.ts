@@ -1,9 +1,10 @@
-import { scrapeDrillerMaguro, getHeatLevel as getHeatLevelDriller, guessStoreAddress as guessStoreAddressDriller, type ScrapedEvent } from "./drillermaguro";
+import { scrapeDrillerMaguro, getHeatLevel as getHeatLevelDriller, guessStoreAddress as guessStoreAddressDriller, ScrapedEvent } from "./drillermaguro";
 import { scrapeHallNavi, getHeatLevel as getHeatLevelHallNavi, guessStoreAddress as guessStoreAddressHallNavi } from "./hallnavi";
 import { scrapeOffme, getHeatLevel as getHeatLevelOffme, guessStoreAddress as guessStoreAddressOffme } from "./offme";
 import { scrapeTouslo, getHeatLevel as getHeatLevelTouslo, guessStoreAddress as guessStoreAddressTouslo } from "./touslo";
 import { stores, events, actors } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
+import { geocodeStore } from "../geocoding";
 
 export interface ScrapingResult {
   success: boolean;
@@ -113,16 +114,18 @@ async function saveScrapedEvent(
 
   if (!store) {
     // 店舗が存在しない場合は新規作成
-    const address = guessStoreAddress(scrapedEvent.storeName, scrapedEvent.area);
+    // geocodeStoreを使用して正確な緯度経度を取得
+    const geocodeResult = await geocodeStore(scrapedEvent.storeName, scrapedEvent.area);
     
-    // 簡易的な緯度経度（実際にはジオコーディングAPIを使用）
-    const { lat, lng } = guessCoordinates(scrapedEvent.area);
+    const address = geocodeResult?.address || guessStoreAddress(scrapedEvent.storeName, scrapedEvent.area);
+    const latitude = geocodeResult?.latitude || guessCoordinates(scrapedEvent.area).lat.toString();
+    const longitude = geocodeResult?.longitude || guessCoordinates(scrapedEvent.area).lng.toString();
 
     await db.insert(stores).values({
       name: scrapedEvent.storeName,
       address,
-      latitude: lat.toString(),
-      longitude: lng.toString(),
+      latitude,
+      longitude,
       area: scrapedEvent.area,
       machineCount: 500, // デフォルト値
       openingTime: "10:00",
