@@ -50,7 +50,8 @@ export const appRouter = router({
         const now = new Date();
         const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
         const jstDate = new Date(now.getTime() + jstOffset);
-        const todayStart = new Date(jstDate.getFullYear(), jstDate.getMonth(), jstDate.getDate());
+        // UTC基準で日付範囲を計算
+        const todayStart = new Date(Date.UTC(jstDate.getUTCFullYear(), jstDate.getUTCMonth(), jstDate.getUTCDate()) - jstOffset);
         const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
         // 当日のイベントを取得
@@ -102,7 +103,8 @@ export const appRouter = router({
       const now = new Date();
       const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
       const jstDate = new Date(now.getTime() + jstOffset);
-      const todayStart = new Date(jstDate.getFullYear(), jstDate.getMonth(), jstDate.getDate());
+      // UTC基準で日付範囲を計算
+      const todayStart = new Date(Date.UTC(jstDate.getUTCFullYear(), jstDate.getUTCMonth(), jstDate.getUTCDate()) - jstOffset);
       const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
       // 当日のイベントを取得
