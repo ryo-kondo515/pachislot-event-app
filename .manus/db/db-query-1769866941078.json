@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM stores WHERE name IN ('パチンコ新宿エース', 'スロット渋谷センター', 'パチスロ池袋キング');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4PpRNbsBEximTG7.ca38a5dcd576 --database WEvdVAHPzFyuFvQzmSPFcV --execute DELETE FROM stores WHERE name IN ('パチンコ新宿エース', 'スロット渋谷センター', 'パチスロ池袋キング');",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1573
+}
