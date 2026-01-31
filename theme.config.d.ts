@@ -8,6 +8,17 @@ export const themeColors: {
   success: { light: string; dark: string };
   warning: { light: string; dark: string };
   error: { light: string; dark: string };
+  // カスタムカラー（アツさレベル）
+  hotSuper: { light: string; dark: string };
+  hotHigh: { light: string; dark: string };
+  hotMedium: { light: string; dark: string };
+  hotNormal: { light: string; dark: string };
+  hotLow: { light: string; dark: string };
+  // アクセントカラー
+  gold: { light: string; dark: string };
+  silver: { light: string; dark: string };
+  neonPink: { light: string; dark: string };
+  neonCyan: { light: string; dark: string };
 };
 
 declare const themeConfig: {

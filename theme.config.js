@@ -1,14 +1,26 @@
 /** @type {const} */
 const themeColors = {
-  primary: { light: '#0a7ea4', dark: '#0a7ea4' },
-  background: { light: '#ffffff', dark: '#151718' },
-  surface: { light: '#f5f5f5', dark: '#1e2022' },
-  foreground: { light: '#11181C', dark: '#ECEDEE' },
-  muted: { light: '#687076', dark: '#9BA1A6' },
-  border: { light: '#E5E7EB', dark: '#334155' },
-  success: { light: '#22C55E', dark: '#4ADE80' },
-  warning: { light: '#F59E0B', dark: '#FBBF24' },
-  error: { light: '#EF4444', dark: '#F87171' },
+  // パチスロ風ダークテーマ - ネオンカラーが映える黒背景
+  primary: { light: '#FF1744', dark: '#FF1744' },        // ネオンレッド
+  background: { light: '#0D0D0D', dark: '#0D0D0D' },     // ディープブラック
+  surface: { light: '#1A1A2E', dark: '#1A1A2E' },        // ダークパープル
+  foreground: { light: '#FFFFFF', dark: '#FFFFFF' },     // ホワイト
+  muted: { light: '#9E9E9E', dark: '#9E9E9E' },          // グレー
+  border: { light: '#333333', dark: '#333333' },         // ダークグレー
+  success: { light: '#00E676', dark: '#00E676' },        // ネオングリーン
+  warning: { light: '#FFD600', dark: '#FFD600' },        // ゴールドイエロー
+  error: { light: '#FF1744', dark: '#FF1744' },          // ネオンレッド
+  // カスタムカラー（アツさレベル）
+  hotSuper: { light: '#FF1744', dark: '#FF1744' },       // 超アツ
+  hotHigh: { light: '#FF9100', dark: '#FF9100' },        // アツ
+  hotMedium: { light: '#FFD600', dark: '#FFD600' },      // やや熱
+  hotNormal: { light: '#00E5FF', dark: '#00E5FF' },      // 普通
+  hotLow: { light: '#2979FF', dark: '#2979FF' },         // 低
+  // アクセントカラー
+  gold: { light: '#FFD700', dark: '#FFD700' },           // ゴールド
+  silver: { light: '#C0C0C0', dark: '#C0C0C0' },         // シルバー
+  neonPink: { light: '#FF4081', dark: '#FF4081' },       // ネオンピンク
+  neonCyan: { light: '#00E5FF', dark: '#00E5FF' },       // ネオンシアン
 };
 
 module.exports = { themeColors };
