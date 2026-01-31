@@ -3,6 +3,7 @@ import { Text, View, Pressable, StyleSheet, Platform, ScrollView, ActivityIndica
 import { WebView } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
 import { Asset } from 'expo-asset';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -144,14 +145,22 @@ export default function MapScreen() {
     }
   }, [handleMapReady]);
 
-  const handleStoreDetailPress = useCallback(() => {
+  const handleStoreDetailPress = useCallback(async () => {
     if (selectedStore) {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      router.push(`/store/${selectedStore.id}` as any);
+      
+      // sourceUrlがあれば外部ブラウザで開く
+      const store = storesData?.find((s: any) => s.id.toString() === selectedStore.id);
+      if (store?.sourceUrl) {
+        await WebBrowser.openBrowserAsync(store.sourceUrl);
+      } else {
+        // sourceUrlがない場合は詳細ページに遷移（未実装）
+        router.push(`/store/${selectedStore.id}` as any);
+      }
     }
-  }, [selectedStore, router]);
+  }, [selectedStore, router, storesData]);
 
   const handleCurrentLocation = useCallback(async () => {
     if (Platform.OS !== 'web') {
