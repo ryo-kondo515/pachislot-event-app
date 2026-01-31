@@ -1,20 +1,34 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Text, View, ScrollView, Pressable, StyleSheet, Linking, Platform } from 'react-native';
+import { Text, View, ScrollView, Pressable, StyleSheet, Linking, Platform, ActivityIndicator } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColors } from '@/hooks/use-colors';
-import { getStoreDetail, getHotLevelColor, getHotLevelLabel } from '@/data/mock-data';
+import { getHotLevelColor, getHotLevelLabel } from '@/data/mock-data';
+import { trpc } from '@/lib/trpc';
 
 export default function StoreDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const colors = useColors();
 
-  const storeDetail = getStoreDetail(id);
+  // APIで店舗詳細情報を取得
+  const { data: storeDetail, isLoading, error } = trpc.stores.detail.useQuery(
+    { storeId: parseInt(id, 10) },
+    { enabled: !!id && !isNaN(parseInt(id, 10)) }
+  );
 
-  if (!storeDetail) {
+  if (isLoading) {
+    return (
+      <ScreenContainer className="flex-1 items-center justify-center">
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: colors.muted, marginTop: 16 }}>読み込み中...</Text>
+      </ScreenContainer>
+    );
+  }
+
+  if (error || !storeDetail) {
     return (
       <ScreenContainer className="flex-1 items-center justify-center">
         <Text style={{ color: colors.foreground }}>店舗が見つかりません</Text>
@@ -55,24 +69,13 @@ export default function StoreDetailScreen() {
 
         {/* 店舗情報カード */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <View style={styles.cardHeader}>
-            <View
-              style={[
-                styles.hotBadge,
-                { backgroundColor: getHotLevelColor(storeDetail.hotLevel) },
-              ]}
-            >
-              <IconSymbol name="flame.fill" size={14} color="#FFFFFF" />
-              <Text style={styles.hotBadgeText}>
-                {getHotLevelLabel(storeDetail.hotLevel)}
-              </Text>
-            </View>
-            {storeDetail.isPremium && (
+          {storeDetail.isPremium === 1 && (
+            <View style={styles.cardHeader}>
               <View style={[styles.premiumBadge, { backgroundColor: colors.gold }]}>
                 <Text style={styles.premiumBadgeText}>★ 優良店</Text>
               </View>
-            )}
-          </View>
+            </View>
+          )}
 
           <Text style={[styles.storeName, { color: colors.foreground }]}>
             {storeDetail.name}
@@ -85,12 +88,14 @@ export default function StoreDetailScreen() {
                 {storeDetail.address}
               </Text>
             </View>
-            <View style={styles.infoRow}>
-              <IconSymbol name="clock.fill" size={16} color={colors.muted} />
-              <Text style={[styles.infoText, { color: colors.muted }]}>
-                営業時間: {storeDetail.openingHours}
-              </Text>
-            </View>
+            {storeDetail.openingTime && storeDetail.closingTime && (
+              <View style={styles.infoRow}>
+                <IconSymbol name="clock.fill" size={16} color={colors.muted} />
+                <Text style={[styles.infoText, { color: colors.muted }]}>
+                  営業時間: {storeDetail.openingTime}-{storeDetail.closingTime}
+                </Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
               <IconSymbol name="flame.fill" size={16} color={colors.muted} />
               <Text style={[styles.infoText, { color: colors.muted }]}>
@@ -117,43 +122,48 @@ export default function StoreDetailScreen() {
                     <View style={styles.eventDate}>
                       <IconSymbol name="clock.fill" size={14} color={colors.primary} />
                       <Text style={[styles.eventDateText, { color: colors.primary }]}>
-                        {event.eventDate}
+                        {new Date(event.eventDate).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}
                       </Text>
                     </View>
-                    <View style={[styles.sourceTag, { backgroundColor: colors.background }]}>
-                      <Text style={[styles.sourceText, { color: colors.muted }]}>
-                        {event.sourceName}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.actorInfo}>
-                    <View style={[styles.actorAvatar, { backgroundColor: colors.primary }]}>
-                      <IconSymbol name="person.fill" size={20} color="#FFFFFF" />
-                    </View>
-                    <View style={styles.actorDetails}>
-                      <Text style={[styles.actorName, { color: colors.foreground }]}>
-                        {event.actor.name}
-                      </Text>
-                      <Text style={[styles.actorRank, { color: colors.gold }]}>
-                        ランクスコア: {event.actor.rankScore}
+                    <View style={[styles.hotBadge, { backgroundColor: getHotLevelColor(event.hotLevel as any) }]}>
+                      <IconSymbol name="flame.fill" size={12} color="#FFFFFF" />
+                      <Text style={[styles.hotBadgeText, { fontSize: 11 }]}>
+                        {getHotLevelLabel(event.hotLevel as any)}
                       </Text>
                     </View>
                   </View>
 
-                  <Pressable
-                    onPress={() => handleOpenLink(event.sourceUrl)}
-                    style={({ pressed }) => [
-                      styles.linkButton,
-                      { backgroundColor: colors.background },
-                      pressed && { opacity: 0.7 },
-                    ]}
-                  >
-                    <IconSymbol name="link" size={14} color={colors.primary} />
-                    <Text style={[styles.linkText, { color: colors.primary }]}>
-                      ソースを確認
-                    </Text>
-                  </Pressable>
+                  {event.actor && (
+                    <View style={styles.actorInfo}>
+                      <View style={[styles.actorAvatar, { backgroundColor: colors.primary }]}>
+                        <IconSymbol name="person.fill" size={20} color="#FFFFFF" />
+                      </View>
+                      <View style={styles.actorDetails}>
+                        <Text style={[styles.actorName, { color: colors.foreground }]}>
+                          {event.actor.name}
+                        </Text>
+                        <Text style={[styles.actorRank, { color: colors.gold }]}>
+                          ランクスコア: {event.actor.rankScore}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {event.sourceUrl && (
+                    <Pressable
+                      onPress={() => handleOpenLink(event.sourceUrl!)}
+                      style={({ pressed }) => [
+                        styles.linkButton,
+                        { backgroundColor: colors.background },
+                        pressed && { opacity: 0.7 },
+                      ]}
+                    >
+                      <IconSymbol name="link" size={14} color={colors.primary} />
+                      <Text style={[styles.linkText, { color: colors.primary }]}>
+                        ソースを確認
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
               ))}
             </View>

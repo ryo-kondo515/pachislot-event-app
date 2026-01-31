@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { z } from "zod";
 import { scraperRouter } from "./routers-scraper";
 import { actorsRouter } from "./routers-actors";
 
@@ -20,6 +21,73 @@ export const appRouter = router({
   }),
 
   stores: router({
+    detail: publicProcedure
+      .input(z.object({ storeId: z.number() }))
+      .query(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const { stores, events, actors } = await import("../drizzle/schema");
+        const { eq, and, gte, lte } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) {
+          return null;
+        }
+
+        // 店舗情報を取得
+        const storeList = await db
+          .select()
+          .from(stores)
+          .where(eq(stores.id, input.storeId))
+          .limit(1);
+        
+        if (storeList.length === 0) {
+          return null;
+        }
+
+        const store = storeList[0];
+
+        // 当日の日付を取得（日本時間）
+        const now = new Date();
+        const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
+        const jstDate = new Date(now.getTime() + jstOffset);
+        const todayStart = new Date(jstDate.getFullYear(), jstDate.getMonth(), jstDate.getDate());
+        const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+        // 当日のイベントを取得
+        const todayEvents = await db
+          .select()
+          .from(events)
+          .where(
+            and(
+              eq(events.storeId, input.storeId),
+              gte(events.eventDate, todayStart),
+              lte(events.eventDate, todayEnd)
+            )
+          );
+
+        // 演者情報を取得
+        const eventsWithActors = await Promise.all(
+          todayEvents.map(async (event) => {
+            if (event.actorId) {
+              const actorList = await db
+                .select()
+                .from(actors)
+                .where(eq(actors.id, event.actorId))
+                .limit(1);
+              return {
+                ...event,
+                actor: actorList[0] || null,
+              };
+            }
+            return { ...event, actor: null };
+          })
+        );
+
+        return {
+          ...store,
+          events: eventsWithActors,
+        };
+      }),
     list: publicProcedure.query(async () => {
       const { getDb } = await import("./db");
       const { stores, events, actors } = await import("../drizzle/schema");
