@@ -7,7 +7,8 @@ import { Asset } from 'expo-asset';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useColors } from '@/hooks/use-colors';
-import { mockStores, getHotLevelColor, getHotLevelLabel } from '@/data/mock-data';
+import { getHotLevelColor, getHotLevelLabel } from '@/data/mock-data';
+import { trpc } from '@/lib/trpc';
 import { Store, HotLevel } from '@/types';
 import { useLocation } from '@/hooks/use-location';
 import { calculateDistance, formatDistance } from '@/lib/location-utils';
@@ -20,7 +21,8 @@ export default function MapScreen() {
   const webViewRef = useRef<WebView>(null);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [mapHtml, setMapHtml] = useState<string>('');
-  const [sortedStores, setSortedStores] = useState(mockStores);
+  const [sortedStores, setSortedStores] = useState<Store[]>([]);
+  const { data: storesData, isLoading: storesLoading } = trpc.stores.list.useQuery();
   const { location, loading: locationLoading, getCurrentLocation } = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -28,7 +30,7 @@ export default function MapScreen() {
     hotLevels: [],
     areas: [],
   });
-  const [filteredStores, setFilteredStores] = useState(mockStores);
+  const [filteredStores, setFilteredStores] = useState<Store[]>([]);
 
   // HTMLファイルを読み込む
   useEffect(() => {
@@ -46,9 +48,29 @@ export default function MapScreen() {
     loadMapHtml();
   }, []);
 
+  // APIデータを初期化
+  useEffect(() => {
+    if (storesData) {
+      // APIデータをStore型に変換
+      const stores: Store[] = storesData.map((store: any) => ({
+        id: store.id.toString(),
+        name: store.name,
+        address: store.address,
+        latitude: parseFloat(store.latitude),
+        longitude: parseFloat(store.longitude),
+        hotLevel: store.events[0]?.hotLevel || 3,
+        machineCount: store.machineCount,
+        openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
+        isPremium: store.isPremium === 1,
+      }));
+      setSortedStores(stores);
+      setFilteredStores(stores);
+    }
+  }, [storesData]);
+
   // 検索・フィルター処理
   useEffect(() => {
-    let result = mockStores;
+    let result = sortedStores;
 
     // 検索クエリでフィルタリング
     if (searchQuery) {
@@ -103,7 +125,7 @@ export default function MapScreen() {
         if (Platform.OS !== 'web') {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
-        const store = mockStores.find(s => s.id === data.store.id);
+        const store = sortedStores.find((s: Store) => s.id === data.store.id);
         if (store) {
           setSelectedStore(store);
         }
@@ -140,7 +162,7 @@ export default function MapScreen() {
       }));
       
       // 距離順にソート
-      const storesWithDistance = mockStores.map(store => ({
+      const storesWithDistance = sortedStores.map((store: Store) => ({
         ...store,
         distance: calculateDistance(
           userLocation.latitude,
@@ -150,7 +172,7 @@ export default function MapScreen() {
         )
       }));
       
-      const sorted = storesWithDistance.sort((a, b) => a.distance - b.distance);
+      const sorted = storesWithDistance.sort((a: Store & { distance: number }, b: Store & { distance: number }) => a.distance - b.distance);
       setSortedStores(sorted);
       
       // ソート済みデータを地図に送信
@@ -179,7 +201,7 @@ export default function MapScreen() {
           <Text style={[styles.webSubtitle, { color: colors.muted }]}>
             モバイルアプリで地図表示が利用できます
           </Text>
-          {mockStores.map((store) => (
+          {sortedStores.map((store: Store) => (
             <Pressable
               key={store.id}
               onPress={() => router.push(`/store/${store.id}` as any)}
