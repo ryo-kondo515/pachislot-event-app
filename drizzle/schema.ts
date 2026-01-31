@@ -54,6 +54,7 @@ export const actors = mysqlTable("actors", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   imageUrl: text("imageUrl"),
+  rankScore: int("rankScore").default(0).notNull(), // ランキングスコア
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

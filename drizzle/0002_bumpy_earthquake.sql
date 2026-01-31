@@ -1,0 +1,1 @@
+ALTER TABLE `actors` ADD `rankScore` int DEFAULT 0 NOT NULL;
