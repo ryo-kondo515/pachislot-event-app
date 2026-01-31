@@ -43,9 +43,14 @@
   <script>
     // 地図の初期化
     const map = L.map('map', {
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: false
     }).setView([35.6812, 139.7671], 12);
+
+    // ズームコントロールを左下に追加
+    L.control.zoom({
+      position: 'bottomleft'
+    }).addTo(map);
 
     // CartoDB Positronタイルレイヤーを追加
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
