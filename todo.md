@@ -59,3 +59,9 @@
 - [x] HTML構造を分析（Cloudflareチャレンジページのみ返される）
 - [x] puppeteer-extra-plugin-stealthを追加（効果なし）
 - [ ] 代替案：drillermaguro.comに集中、または手動データ収集
+
+## LLM APIを使用したスクレイピング
+- [x] サーバー側のLLM API統合を確認
+- [x] HTMLパース用のLLMユーティリティを作成（HTMLクリーンアップ機能付き）
+- [x] LLMを使用したhall-navi.comスクレイパーを実装（Cloudflareによりブロック）
+- [x] LLMスクレイパーのテスト実行（drillermaguro.comで成功、8イベント抽出）
