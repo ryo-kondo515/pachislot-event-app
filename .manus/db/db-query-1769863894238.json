@@ -1,0 +1,9 @@
+{
+  "query": "DELETE FROM stores WHERE name IN ('大崎一万発', 'シーサ。', 'AI BB', '七色れあ', '嶋大輔', 'ウシオ') OR address LIKE '%ワンダーランド%' OR address LIKE '%大崎一万発%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4PpRNbsBEximTG7.ca38a5dcd576 --database WEvdVAHPzFyuFvQzmSPFcV --execute DELETE FROM stores WHERE name IN ('大崎一万発', 'シーサ。', 'AI BB', '七色れあ', '嶋大輔', 'ウシオ') OR address LIKE '%ワンダーランド%' OR address LIKE '%大崎一万発%';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1524
+}

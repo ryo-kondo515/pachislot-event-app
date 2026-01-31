@@ -201,6 +201,18 @@ export default function MapScreen() {
           <Text style={[styles.webSubtitle, { color: colors.muted }]}>
             モバイルアプリで地図表示が利用できます
           </Text>
+          {storesLoading && (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[{ marginTop: 10, color: colors.muted }]}>店舗情報を読み込んでいます...</Text>
+            </View>
+          )}
+          {!storesLoading && sortedStores.length === 0 && (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={[{ color: colors.muted }]}>店舗情報がありません</Text>
+              <Text style={[{ marginTop: 10, color: colors.muted, fontSize: 12 }]}>APIデータ: {storesData ? storesData.length : 0}件</Text>
+            </View>
+          )}
           {sortedStores.map((store: Store) => (
             <Pressable
               key={store.id}

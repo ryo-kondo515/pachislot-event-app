@@ -1,4 +1,7 @@
-import { scrapeDrillerMaguro, getHeatLevel, guessStoreAddress, type ScrapedEvent } from "./drillermaguro";
+import { scrapeDrillerMaguro, getHeatLevel as getHeatLevelDriller, guessStoreAddress as guessStoreAddressDriller, type ScrapedEvent } from "./drillermaguro";
+import { scrapeHallNavi, getHeatLevel as getHeatLevelHallNavi, guessStoreAddress as guessStoreAddressHallNavi } from "./hallnavi";
+import { scrapeOffme, getHeatLevel as getHeatLevelOffme, guessStoreAddress as guessStoreAddressOffme } from "./offme";
+import { scrapeTouslo, getHeatLevel as getHeatLevelTouslo, guessStoreAddress as guessStoreAddressTouslo } from "./touslo";
 import { stores, events, actors } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -27,10 +30,10 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
     console.log("[Scraper] Starting drillermaguro.com scraping...");
     const drillerEvents = await scrapeDrillerMaguro();
 
-    // 2. スクレイピング結果をデータベースに保存
+    // 1-2. スクレイピング結果をデータベースに保存
     for (const scrapedEvent of drillerEvents) {
       try {
-        await saveScrapedEvent(scrapedEvent, result);
+        await saveScrapedEvent(scrapedEvent, result, getHeatLevelDriller, guessStoreAddressDriller);
       } catch (error) {
         const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
         console.error(`[Scraper] ${errorMsg}`);
@@ -38,10 +41,45 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
       }
     }
 
-    // TODO: 他のソースのスクレイピングを追加
-    // - hall-navi.com
-    // - offme.jp
-    // - touslo777souko.blog.jp
+    // 2. hall-navi.comからスクレイピング
+    console.log("[Scraper] Starting hall-navi.com scraping...");
+    const hallNaviEvents = await scrapeHallNavi();
+    for (const scrapedEvent of hallNaviEvents) {
+      try {
+        await saveScrapedEvent(scrapedEvent, result, getHeatLevelHallNavi, guessStoreAddressHallNavi);
+      } catch (error) {
+        const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
+        console.error(`[Scraper] ${errorMsg}`);
+        result.errors.push(errorMsg);
+      }
+    }
+
+    // 3. offme.jpからスクレイピング
+    console.log("[Scraper] Starting offme.jp scraping...");
+    const offmeEvents = await scrapeOffme();
+    for (const scrapedEvent of offmeEvents) {
+      try {
+        await saveScrapedEvent(scrapedEvent, result, getHeatLevelOffme, guessStoreAddressOffme);
+      } catch (error) {
+        const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
+        console.error(`[Scraper] ${errorMsg}`);
+        result.errors.push(errorMsg);
+      }
+    }
+
+    // 4. touslo777souko.blog.jpからスクレイピング
+    // 注意: tousloはエリア別のまとめページなので、個別店舗情報が取得できないため、現在は無効化
+    // console.log("[Scraper] Starting touslo777souko.blog.jp scraping...");
+    // const tousloEvents = await scrapeTouslo();
+    // for (const scrapedEvent of tousloEvents) {
+    //   try {
+    //     await saveScrapedEvent(scrapedEvent, result, getHeatLevelTouslo, guessStoreAddressTouslo);
+    //   } catch (error) {
+    //     const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
+    //     console.error(`[Scraper] ${errorMsg}`);
+    //     result.errors.push(errorMsg);
+    //   }
+    // }
 
     console.log(`[Scraper] Completed: ${result.storesAdded} stores, ${result.eventsAdded} events, ${result.actorsAdded} actors`);
     
@@ -57,7 +95,12 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
 /**
  * スクレイピング結果をデータベースに保存
  */
-async function saveScrapedEvent(scrapedEvent: ScrapedEvent, result: ScrapingResult): Promise<void> {
+async function saveScrapedEvent(
+  scrapedEvent: ScrapedEvent, 
+  result: ScrapingResult,
+  getHeatLevel: (eventType: string) => number,
+  guessStoreAddress: (storeName: string, area: string) => string
+): Promise<void> {
   const { getDb } = await import("../db");
   const db = await getDb();
   if (!db) {

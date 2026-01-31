@@ -12,12 +12,15 @@
 - [x] アツさレベル自動判定機能実装
 - [x] フロントエンドとバックエンドの統合テスト
 - [x] スクレイピング機能のデバッグと修正
+- [x] hall-navi.comスクレイパー実装
+- [x] offme.jpスクレイパー実装
+- [x] touslo777souko.blog.jpスクレイパー実装（一時無効化）
+
+## 現在の問題
+- [ ] フロントエンドでAPIデータが表示されない問題を修正
+- [ ] hall-navi.comとoffme.jpのスクレイピング精度を改善
 
 ## 次のステップ
-- [ ] 他のスクレイピングソースの追加
-  - [ ] hall-navi.com のスクレイピング実装
-  - [ ] offme.jp のスクレイピング実装
-  - [ ] touslo777souko.blog.jp のスクレイピング実装
 - [ ] Google Maps Geocoding APIの統合（正確な緯度経度取得）
 - [ ] 地図機能の実装（Expo Maps SDK）
 - [ ] 演者情報の自動抽出
