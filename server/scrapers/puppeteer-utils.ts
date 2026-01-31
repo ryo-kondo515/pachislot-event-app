@@ -1,4 +1,9 @@
-import puppeteer, { Browser, Page } from "puppeteer";
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import { Browser, Page } from "puppeteer";
+
+// Stealthプラグインを追加（ボット検出を回避）
+puppeteer.use(StealthPlugin());
 
 /**
  * User-Agentのリスト

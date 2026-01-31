@@ -53,3 +53,9 @@
 - [x] リトライロジックの実装（3回再試行）
 - [x] User-Agentローテーションの実装（5種類のUser-Agent）
 - [x] スクレイピングテストの実行
+
+## hall-navi.com HTML構造調査
+- [x] PuppeteerでHTMLを取得してファイルに保存
+- [x] HTML構造を分析（Cloudflareチャレンジページのみ返される）
+- [x] puppeteer-extra-plugin-stealthを追加（効果なし）
+- [ ] 代替案：drillermaguro.comに集中、または手動データ収集
