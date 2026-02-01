@@ -155,12 +155,12 @@ export default function MapScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
       
-      // sourceUrlがあれば外部ブラウザで開く
+      // officialUrlがあれば外部ブラウザで開く
       const store = storesData?.find((s: any) => s.id.toString() === selectedStore.id);
-      if (store?.sourceUrl) {
-        await WebBrowser.openBrowserAsync(store.sourceUrl);
+      if (store?.officialUrl) {
+        await WebBrowser.openBrowserAsync(store.officialUrl);
       } else {
-        // sourceUrlがない場合は詳細ページに遷移（未実装）
+        // officialUrlがない場合は詳細ページに遷移（未実装）
         router.push(`/store/${selectedStore.id}` as any);
       }
     }

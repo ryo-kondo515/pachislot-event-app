@@ -6,6 +6,7 @@ import { scrapeRaitenEx, getHeatLevel as getHeatLevelRaitenEx, guessStoreAddress
 import { stores, events, actors } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { geocodeStore } from "../geocoding";
+import { findStoreOfficialUrl } from "../utils/store-url-finder";
 
 export interface ScrapingResult {
   success: boolean;
@@ -140,6 +141,9 @@ async function saveScrapedEvent(
     const latitude = geocodeResult?.latitude || guessCoordinates(scrapedEvent.area).lat.toString();
     const longitude = geocodeResult?.longitude || guessCoordinates(scrapedEvent.area).lng.toString();
 
+    // 店舗公式URLを取得
+    const officialUrl = await findStoreOfficialUrl(scrapedEvent.storeName, scrapedEvent.area);
+
     await db.insert(stores).values({
       name: scrapedEvent.storeName,
       address,
@@ -151,6 +155,7 @@ async function saveScrapedEvent(
       closingTime: "23:00",
       isPremium: 0,
       sourceUrl: scrapedEvent.sourceUrl,
+      officialUrl,
     });
 
     // 作成した店舗を再取得

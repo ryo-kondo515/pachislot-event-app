@@ -40,6 +40,7 @@ export const stores = mysqlTable("stores", {
   closingTime: varchar("closingTime", { length: 10 }),
   isPremium: int("isPremium").default(0).notNull(), // 0 or 1
   sourceUrl: text("sourceUrl"),
+  officialUrl: text("officialUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

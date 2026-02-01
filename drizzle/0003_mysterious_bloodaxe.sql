@@ -1,0 +1,1 @@
+ALTER TABLE `stores` ADD `officialUrl` text;
