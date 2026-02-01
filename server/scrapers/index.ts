@@ -1,7 +1,8 @@
-import { scrapeDrillerMaguro, getHeatLevel as getHeatLevelDriller, guessStoreAddress as guessStoreAddressDriller, ScrapedEvent } from "./drillermaguro";
+import { scrapeDrillerMaguro, getHeatLevel as getHeatLevelDriller, guessStoreAddress as guessStoreAddressDriller, type ScrapedEvent } from "./drillermaguro";
 import { scrapeHallNavi, getHeatLevel as getHeatLevelHallNavi, guessStoreAddress as guessStoreAddressHallNavi } from "./hallnavi";
 import { scrapeOffme, getHeatLevel as getHeatLevelOffme, guessStoreAddress as guessStoreAddressOffme } from "./offme";
 import { scrapeTouslo, getHeatLevel as getHeatLevelTouslo, guessStoreAddress as guessStoreAddressTouslo } from "./touslo";
+import { scrapeRaitenEx, getHeatLevel as getHeatLevelRaitenEx, guessStoreAddress as guessStoreAddressRaitenEx } from "./raitenex";
 import { stores, events, actors } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { geocodeStore } from "../geocoding";
@@ -86,6 +87,19 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
     //     result.errors.push(errorMsg);
     //   }
     // }
+
+    // 5. raiten-ex.comからスクレイピング
+    console.log("[Scraper] Starting raiten-ex.com scraping...");
+    const raitenExEvents = await scrapeRaitenEx();
+    for (const scrapedEvent of raitenExEvents) {
+      try {
+        await saveScrapedEvent(scrapedEvent, result, getHeatLevelRaitenEx, guessStoreAddressRaitenEx);
+      } catch (error) {
+        const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
+        console.error(`[Scraper] ${errorMsg}`);
+        result.errors.push(errorMsg);
+      }
+    }
 
     console.log(`[Scraper] Completed: ${result.storesAdded} stores, ${result.eventsAdded} events, ${result.actorsAdded} actors`);
     
