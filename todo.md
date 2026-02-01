@@ -136,3 +136,10 @@
 - [x] HTTP 502エラーを修正（EXPO_PUBLIC_API_BASE_URLを設定）
 - [x] サーバーを再起動
 - [x] API接続テストを作成して確認（テスト成功）
+
+## Claude Codeからの開発を可能にするドキュメント整理（完了）
+- [x] 現在のドキュメント構造を確認
+- [x] README.mdを更新してプロジェクト概要を追加
+- [x] 開発者向けガイド（docs/DEVELOPMENT.md）を作成
+- [x] スクレイピング機能のドキュメント（docs/SCRAPING.md）を作成
+- [x] API仕様書（docs/API.md）を作成
