@@ -149,9 +149,9 @@ export default function StoreDetailScreen() {
                     </View>
                   )}
 
-                  {event.sourceUrl && (
+                  {storeDetail.officialUrl && (
                     <Pressable
-                      onPress={() => handleOpenLink(event.sourceUrl!)}
+                      onPress={() => handleOpenLink(storeDetail.officialUrl!)}
                       style={({ pressed }) => [
                         styles.linkButton,
                         { backgroundColor: colors.background },
@@ -160,7 +160,7 @@ export default function StoreDetailScreen() {
                     >
                       <IconSymbol name="link" size={14} color={colors.primary} />
                       <Text style={[styles.linkText, { color: colors.primary }]}>
-                        ソースを確認
+                        公式HPを見る
                       </Text>
                     </Pressable>
                   )}
