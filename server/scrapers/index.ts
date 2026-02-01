@@ -27,6 +27,11 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
   };
 
   try {
+    // 0. 過去のイベントを削除
+    console.log("[Scraper] Cleaning up past events...");
+    const { cleanupPastEvents } = await import("./cleanup-past-events");
+    await cleanupPastEvents();
+
     // 1. drillermaguro.comからスクレイピング
     console.log("[Scraper] Starting drillermaguro.com scraping...");
     const drillerEvents = await scrapeDrillerMaguro();
@@ -141,11 +146,28 @@ async function saveScrapedEvent(
     console.log(`[Scraper] Created store: ${store.name}`);
   }
 
-  // 2. イベントを検索または作成
+  // 2. イベント日付をチェック（当日以降のみを保存）
+  const eventDate = new Date(scrapedEvent.eventDate);
+  const now = new Date();
+  const jstOffset = 9 * 60 * 60 * 1000; // JSTはUTC+9
+  const jstNow = new Date(now.getTime() + jstOffset);
+  const todayStart = new Date(Date.UTC(
+    jstNow.getUTCFullYear(),
+    jstNow.getUTCMonth(),
+    jstNow.getUTCDate()
+  ));
+
+  // 過去のイベントはスキップ
+  if (eventDate < todayStart) {
+    console.log(`[Scraper] Skipped past event: ${store.name} - ${scrapedEvent.eventType} (${scrapedEvent.eventDate})`);
+    return;
+  }
+
+  // 3. イベントを検索または作成
   const existingEvents = await db.select().from(events)
     .where(and(
       eq(events.storeId, store.id),
-      eq(events.eventDate, new Date(scrapedEvent.eventDate))
+      eq(events.eventDate, eventDate)
     ))
     .limit(1);
   const existingEvent = existingEvents[0];
@@ -157,7 +179,7 @@ async function saveScrapedEvent(
     await db.insert(events).values({
       storeId: store.id,
       actorId: null,
-      eventDate: new Date(scrapedEvent.eventDate),
+      eventDate,
       hotLevel: heatLevel,
       machineType: scrapedEvent.eventType,
       description: `${scrapedEvent.eventType}取材`,
