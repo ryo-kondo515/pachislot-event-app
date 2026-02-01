@@ -3,13 +3,13 @@ import { runAllScrapers } from './scrapers/index.js';
 
 /**
  * スクレイピングスケジューラー
- * 毎日午前3時にスクレイピングを実行します
+ * 毎日午前0時1分にスクレイピングを実行します
  */
 export function startScheduler() {
-  // 毎日午前3時に実行（日本時間）
+  // 毎日午前0時1分に実行（日本時間）
   // cron形式: 分 時 日 月 曜日
-  // '0 3 * * *' = 毎日午前3時
-  const task = cron.schedule('0 3 * * *', async () => {
+  // '1 0 * * *' = 毎日午前0時1分
+  const task = cron.schedule('1 0 * * *', async () => {
     console.log('[Scheduler] Starting daily scraping at', new Date().toISOString());
     
     try {
@@ -29,7 +29,7 @@ export function startScheduler() {
   });
 
   task.start();
-  console.log('[Scheduler] Daily scraping scheduled at 3:00 AM JST');
+  console.log('[Scheduler] Daily scraping scheduled at 0:01 AM JST');
   
   return task;
 }
