@@ -34,8 +34,12 @@ export default function MapScreen() {
   });
   const [filteredStores, setFilteredStores] = useState<Store[]>([]);
 
-  // HTMLファイルを読み込む
+  // HTMLファイルを読み込む（Web版ではスキップ）
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      // Web版では地図を使用しないのでスキップ
+      return;
+    }
     async function loadMapHtml() {
       try {
         const asset = Asset.fromModule(require('@/assets/html/map.html'));
