@@ -116,6 +116,32 @@ pnpm tsx server/run-scraper.ts
 pnpm tsx server/update-store-urls.ts
 ```
 
+#### 自動実行（GitHub Actions）
+
+GitHub Actionsで毎日0:01（JST）に自動的にスクレイピングが実行されます。
+
+**必要なGitHub Secrets設定**:
+
+リポジトリの `Settings > Secrets and variables > Actions` で以下を設定してください:
+
+- `DATABASE_URL`: MySQL接続文字列（例: `mysql://user:pass@host:3306/db`）
+- `BUILT_IN_FORGE_API_KEY`: LLM API認証キー
+- `BUILT_IN_FORGE_API_URL`: LLM APIエンドポイント（オプション）
+
+**手動実行**:
+
+GitHub ActionsのUIから「Actions」タブ > 「Daily Scraping」 > 「Run workflow」で手動実行できます。
+
+**実行状態の確認**:
+
+```bash
+# GitHub CLIで実行履歴を確認
+gh run list --workflow=scraping.yml
+
+# 最新の実行ログを表示
+gh run view --log
+```
+
 ## Expo Goでの動作確認
 
 1. Expo Goアプリをインストール（iOS/Android）
