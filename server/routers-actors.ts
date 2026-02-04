@@ -1,8 +1,8 @@
 import { publicProcedure, router } from "./_core/trpc";
 import { calculateActorRankings, getActorRankings } from "./ranking";
 import { z } from "zod";
-import { getDb } from "./db";
-import { actors, events } from "../drizzle/schema";
+import { getDb } from "./db-postgres";
+import { actors, events } from "../drizzle/schema-postgres";
 import { eq, sql, desc } from "drizzle-orm";
 
 export const actorsRouter = router({

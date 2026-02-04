@@ -1,5 +1,5 @@
-import { getDb } from "../server/db";
-import { stores } from "../drizzle/schema";
+import { getDb } from "../server/db-postgres";
+import { stores } from "../drizzle/schema-postgres";
 
 async function checkStoreAddresses() {
   const db = await getDb();

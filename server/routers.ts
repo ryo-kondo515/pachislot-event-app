@@ -1,5 +1,3 @@
-import { COOKIE_NAME } from "../shared/const.js";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
@@ -11,12 +9,9 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+    logout: publicProcedure.mutation(() => {
+      // ログアウトはクライアント側の supabase.auth.signOut() で処理される
+      return { success: true } as const;
     }),
   }),
 
@@ -24,10 +19,10 @@ export const appRouter = router({
     detail: publicProcedure
       .input(z.object({ storeId: z.number() }))
       .query(async ({ input }) => {
-        const { getDb } = await import("./db");
-        const { stores, events, actors } = await import("../drizzle/schema");
+        const { getDb } = await import("./db-postgres");
+        const { stores, events, actors } = await import("../drizzle/schema-postgres");
         const { eq, and, gte, lte } = await import("drizzle-orm");
-        
+
         const db = await getDb();
         if (!db) {
           return null;
@@ -90,8 +85,8 @@ export const appRouter = router({
         };
       }),
     list: publicProcedure.query(async () => {
-      const { getDb } = await import("./db");
-      const { stores, events, actors } = await import("../drizzle/schema");
+      const { getDb } = await import("./db-postgres");
+      const { stores, events, actors } = await import("../drizzle/schema-postgres");
       const { eq, and, gte, lte } = await import("drizzle-orm");
       
       const db = await getDb();

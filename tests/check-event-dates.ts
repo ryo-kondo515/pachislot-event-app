@@ -1,5 +1,5 @@
-import { getDb } from "../server/db";
-import { events } from "../drizzle/schema";
+import { getDb } from "../server/db-postgres";
+import { events } from "../drizzle/schema-postgres";
 
 async function checkEventDates() {
   const db = await getDb();

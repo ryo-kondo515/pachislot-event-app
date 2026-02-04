@@ -1,5 +1,5 @@
-import { getDb } from "../server/db";
-import { stores, events, actors } from "../drizzle/schema";
+import { getDb } from "../server/db-postgres";
+import { stores, events, actors } from "../drizzle/schema-postgres";
 import { eq, and, gte, lte } from "drizzle-orm";
 
 async function checkAPIResponse() {

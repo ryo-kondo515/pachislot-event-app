@@ -1,11 +1,11 @@
-import { events } from "../../drizzle/schema";
+import { events } from "../../drizzle/schema-postgres";
 import { lt } from "drizzle-orm";
 
 /**
  * データベースから過去のイベントを削除する
  */
 export async function cleanupPastEvents(): Promise<{ deletedCount: number }> {
-  const { getDb } = await import("../db");
+  const { getDb } = await import("../db-postgres");
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");

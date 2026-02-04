@@ -1,5 +1,5 @@
-import { getDb } from "./db";
-import { actors, events } from "../drizzle/schema";
+import { getDb } from "./db-postgres";
+import { actors, events } from "../drizzle/schema-postgres";
 import { eq, sql } from "drizzle-orm";
 
 /**

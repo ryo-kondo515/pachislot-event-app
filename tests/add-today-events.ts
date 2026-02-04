@@ -1,5 +1,5 @@
-import { getDb } from "../server/db";
-import { stores, events, actors } from "../drizzle/schema";
+import { getDb } from "../server/db-postgres";
+import { stores, events, actors } from "../drizzle/schema-postgres";
 
 async function addTodayEvents() {
   const db = await getDb();

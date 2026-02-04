@@ -122,6 +122,10 @@ const config: ExpoConfig = {
       },
     ],
   ],
+  extra: {
+    supabaseUrl: process.env.SUPABASE_URL ?? "",
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? "",
+  },
   experiments: {
     typedRoutes: true,
     reactCompiler: true,

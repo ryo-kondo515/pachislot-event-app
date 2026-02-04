@@ -3,7 +3,7 @@ import { scrapeHallNavi, getHeatLevel as getHeatLevelHallNavi, guessStoreAddress
 import { scrapeOffme, getHeatLevel as getHeatLevelOffme, guessStoreAddress as guessStoreAddressOffme } from "./offme";
 import { scrapeTouslo, getHeatLevel as getHeatLevelTouslo, guessStoreAddress as guessStoreAddressTouslo } from "./touslo";
 import { scrapeRaitenEx, getHeatLevel as getHeatLevelRaitenEx, guessStoreAddress as guessStoreAddressRaitenEx } from "./raitenex";
-import { stores, events, actors } from "../../drizzle/schema";
+import { stores, events, actors } from "../../drizzle/schema-postgres";
 import { eq, and } from "drizzle-orm";
 import { geocodeStore } from "../geocoding";
 import { findStoreOfficialUrl } from "../utils/store-url-finder";
@@ -122,7 +122,7 @@ async function saveScrapedEvent(
   getHeatLevel: (eventType: string) => number,
   guessStoreAddress: (storeName: string, area: string) => string
 ): Promise<void> {
-  const { getDb } = await import("../db");
+  const { getDb } = await import("../db-postgres");
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");

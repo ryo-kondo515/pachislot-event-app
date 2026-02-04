@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { getDb } from "./db";
-import { stores, events, actors, InsertStore, InsertEvent, InsertActor } from "../drizzle/schema";
+import { getDb } from "./db-postgres";
+import { stores, events, actors, InsertStore, InsertEvent, InsertActor } from "../drizzle/schema-postgres";
 import { eq } from "drizzle-orm";
 
 /**
@@ -66,8 +66,8 @@ async function upsertStore(store: ScrapedStore): Promise<number> {
     return existing[0].id;
   } else {
     // 新規作成
-    const result = await db.insert(stores).values(store as InsertStore);
-    return Number(result[0].insertId);
+    const result = await db.insert(stores).values(store as InsertStore).returning({ id: stores.id });
+    return result[0].id;
   }
 }
 
@@ -91,8 +91,8 @@ async function upsertActor(actorName: string): Promise<number> {
     return existing[0].id;
   } else {
     // 新規作成
-    const result = await db.insert(actors).values({ name: actorName } as InsertActor);
-    return Number(result[0].insertId);
+    const result = await db.insert(actors).values({ name: actorName } as InsertActor).returning({ id: actors.id });
+    return result[0].id;
   }
 }
 
@@ -138,7 +138,7 @@ async function scrapeDrillerMaguro(): Promise<{ stores: ScrapedStore[]; events: 
     $(".store-item").each((_, element) => {
       const name = $(element).find(".store-name").text().trim();
       const address = $(element).find(".store-address").text().trim();
-      
+
       if (name && address) {
         scrapedStores.push({
           name,
@@ -232,7 +232,7 @@ export async function seedMockData(): Promise<void> {
     },
     {
       name: "スロット渋谷センター",
-      address: "東京都渋谷区道玄坂2-2-2",
+      address: "東京都渋谷区道玄坂1-2-2",
       latitude: "35.6595",
       longitude: "139.6982",
       area: "渋谷",
@@ -263,7 +263,7 @@ export async function seedMockData(): Promise<void> {
       eventDate: new Date("2026-02-01"),
       hotLevel: 5,
       machineType: "バジリスク絆2",
-      description: "超アツイベント！ヤルヲ来店",
+      description: "超アツイベント！ヤルヲ来店イベント",
       sourceUrl: "https://drillermaguro.com/",
     },
     {
@@ -281,7 +281,7 @@ export async function seedMockData(): Promise<void> {
     try {
       const storeId = await upsertStore(store);
       const relatedEvents = mockEvents.filter((e) => e.storeName === store.name);
-      
+
       for (const event of relatedEvents) {
         let actorId: number | undefined;
         if (event.actorName) {
