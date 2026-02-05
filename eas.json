@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">=6.0.0"
+  },
+  "build": {
+    "base": {
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://pachislot-event-app-production.up.railway.app",
+        "SUPABASE_URL": "https://cfnccavbcbmpblrhhkwa.supabase.co",
+        "SUPABASE_ANON_KEY": "sb_publishable_wHRtjWbl4-iCAhrh7NB_Dg_k-HrjnNG"
+      }
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "gradleCommand": ":app:assembleDebug"
+      }
+    },
+    "preview": {
+      "extends": "base"
+    },
+    "production": {
+      "extends": "base"
+    }
+  }
+}

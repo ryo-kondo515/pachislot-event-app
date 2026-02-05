@@ -1,0 +1,4 @@
+[deploy]
+buildCommand = "pnpm install --frozen-lockfile && pnpm build"
+startCommand = "pnpm start"
+healthcheckPath = "/api/health"

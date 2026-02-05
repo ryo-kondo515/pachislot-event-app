@@ -15,7 +15,6 @@ import { useLocation } from '@/hooks/use-location';
 import { calculateDistance, formatDistance } from '@/lib/location-utils';
 import { SearchBar } from '@/components/search-bar';
 import { FilterPanel, FilterOptions } from '@/components/filter-panel';
-import { WebMap } from '@/components/web-map';
 
 export default function MapScreen() {
   const colors = useColors();
@@ -71,7 +70,7 @@ export default function MapScreen() {
       }));
       setSortedStores(stores);
       setFilteredStores(stores);
-      
+
       // 地図にデータを送信
       if (webViewRef.current && stores.length > 0) {
         webViewRef.current.postMessage(JSON.stringify({
@@ -132,7 +131,7 @@ export default function MapScreen() {
   const handleMessage = useCallback((event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      
+
       if (data.type === 'mapReady') {
         handleMapReady();
       } else if (data.type === 'markerClick') {
@@ -154,7 +153,7 @@ export default function MapScreen() {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      
+
       // officialUrlがあれば外部ブラウザで開く
       const store = storesData?.find((s: any) => s.id.toString() === selectedStore.id);
       if (store?.officialUrl) {
@@ -170,10 +169,10 @@ export default function MapScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    
+
     // 現在地を取得
     const userLocation = await getCurrentLocation();
-    
+
     if (userLocation && webViewRef.current) {
       // 地図を現在地に移動
       webViewRef.current.postMessage(JSON.stringify({
@@ -182,7 +181,7 @@ export default function MapScreen() {
         longitude: userLocation.longitude,
         zoom: 13
       }));
-      
+
       // 距離順にソート
       const storesWithDistance = sortedStores.map((store: Store) => ({
         ...store,
@@ -193,10 +192,10 @@ export default function MapScreen() {
           store.longitude
         )
       }));
-      
+
       const sorted = storesWithDistance.sort((a: Store & { distance: number }, b: Store & { distance: number }) => a.distance - b.distance);
       setSortedStores(sorted);
-      
+
       // ソート済みデータを地図に送信
       webViewRef.current.postMessage(JSON.stringify({
         type: 'setStores',
@@ -496,31 +495,10 @@ const styles = StyleSheet.create({
     marginTop: 100,
     fontSize: 16,
   },
-  webContainer: {
-    padding: 16,
-  },
-  webSidebar: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 400,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    zIndex: 100,
-  },
   webTitle: {
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 8,
-  },
-  webSubtitle: {
-    fontSize: 14,
-    marginBottom: 20,
   },
   storeCard: {
     borderRadius: 12,

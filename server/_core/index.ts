@@ -76,8 +76,10 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
     
-    // 定期実行スケジューラーを起動
-    startScheduler();
+    // SKIP_SCHEDULER=true の場合スキップ（Railway上では GitHub Actions で代用）
+    if (process.env.SKIP_SCHEDULER !== "true") {
+      startScheduler();
+    }
   });
 }
 
