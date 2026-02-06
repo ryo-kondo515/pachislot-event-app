@@ -118,8 +118,8 @@ const config: ExpoConfig = {
     eas: {
       projectId: "8ac39f17-2738-4ee9-bf48-1c124d581d4e",
     },
-    supabaseUrl: process.env.SUPABASE_URL ?? "",
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? "",
+    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? "",
+    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "",
   },
   experiments: {
     typedRoutes: true,

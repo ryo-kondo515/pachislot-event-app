@@ -1,11 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-import Constants from "expo-constants";
 
-const expoConfig = Constants.expoConfig;
-const supabaseUrl = (expoConfig?.extra?.supabaseUrl as string) ?? "";
-const supabaseAnonKey = (expoConfig?.extra?.supabaseAnonKey as string) ?? "";
+// Expo Goで動作させるため、直接process.env.EXPO_PUBLIC_*を使用
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 const storage = {
   async getItem(key: string): Promise<string | null> {
