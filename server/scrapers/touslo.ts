@@ -6,6 +6,7 @@ export interface ScrapedEvent {
   area: string;
   eventDate: string; // YYYY-MM-DD
   eventType: string;
+  actorName?: string; // 演者名（オプショナル）
   sourceUrl: string;
   scrapedAt: Date;
 }

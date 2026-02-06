@@ -6,6 +6,7 @@ export interface ScrapedEvent {
   area: string;
   eventDate: string; // YYYY-MM-DD形式
   eventType: string; // マグロ、ジャンドリ、極上、あがり、海鮮ドン等
+  actorName?: string; // 演者名（オプショナル）
   sourceUrl: string;
   scrapedAt: Date;
 }
@@ -100,6 +101,23 @@ export async function scrapeDrillerMaguro(): Promise<ScrapedEvent[]> {
       const storeName = storeMatch[1].trim();
       const eventDate = parseDateString(`${dateMatch[1]}月${dateMatch[2]}日`, currentYear);
 
+      // 演者名を抽出（イベントタイプの前後、または店舗名の後にある可能性がある）
+      let actorName: string | undefined = undefined;
+
+      // パターン1: イベントタイプの後に演者名がある（例：「マグロ 諸ゲン」）
+      const actorAfterEventMatch = text.match(new RegExp(`${eventType}[\\s　]+(\\S+)`));
+      if (actorAfterEventMatch && !actorAfterEventMatch[1].match(/取材|結果|レポート|開催/)) {
+        actorName = actorAfterEventMatch[1];
+      }
+
+      // パターン2: 店舗名とイベントタイプの間に演者名がある（例：「店舗名 諸ゲン マグロ」）
+      if (!actorName) {
+        const actorBetweenMatch = text.match(new RegExp(`${storeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s　]+(\\S+?)[\\s　]+${eventType}`));
+        if (actorBetweenMatch && !actorBetweenMatch[1].match(/取材|結果|レポート|開催|エリア|地域/)) {
+          actorName = actorBetweenMatch[1];
+        }
+      }
+
       const fullUrl = href.startsWith("http") ? href : `https://drillermaguro.com${href}`;
 
       events.push({
@@ -107,6 +125,7 @@ export async function scrapeDrillerMaguro(): Promise<ScrapedEvent[]> {
         area,
         eventDate,
         eventType,
+        actorName,
         sourceUrl: fullUrl,
         scrapedAt: new Date(),
       });

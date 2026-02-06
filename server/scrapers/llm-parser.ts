@@ -48,13 +48,16 @@ HTMLから以下の情報を抽出してJSON配列で返してください：
 - area: エリア（都道府県名、例：東京、神奈川、大阪）
 - eventDate: イベント日付（YYYY-MM-DD形式）
 - eventType: イベントタイプ（例：マグロ、ジャンドリ、取材、極上、あがり）
+- actorName: 演者名（文字列、見つからない場合はnull）
 
 注意事項：
 1. 日付は必ずYYYY-MM-DD形式に変換してください（例：2026-01-25）
 2. 年が明示されていない場合は現在の年（2026年）を使用してください
 3. エリアは都道府県名のみ（「都」「県」は不要）
 4. 店舗名は正確に抽出してください
-5. イベント情報が見つからない場合は空の配列を返してください
+5. 演者名は人物の名前のみを抽出してください（例：「諸ゲン」「ヤルヲ」「ピスタチオ」など）
+6. 演者名が見つからない場合はnullを設定してください
+7. イベント情報が見つからない場合は空の配列を返してください
 
 返答は必ずJSON配列のみで、説明文は不要です。`,
         },
@@ -102,6 +105,7 @@ ${truncatedHtml}
       area: event.area || "",
       eventDate: event.eventDate || "",
       eventType: event.eventType || "取材",
+      actorName: event.actorName || undefined,
       sourceUrl: sourceUrl,
       scrapedAt: new Date(),
     }));

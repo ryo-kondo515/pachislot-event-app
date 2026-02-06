@@ -37,10 +37,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="actors"
+        name="events"
         options={{
-          title: "演者",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          title: "イベント",
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar.fill" color={color} />,
         }}
       />
       <Tabs.Screen

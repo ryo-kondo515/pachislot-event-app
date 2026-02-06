@@ -182,7 +182,42 @@ async function saveScrapedEvent(
     return;
   }
 
-  // 3. イベントを検索または作成
+  // 3. 演者情報の処理
+  let actorId: number | null = null;
+  if (scrapedEvent.actorName) {
+    // 演者名をクリーンアップ（「ワロス来店実践」→「ワロス」など）
+    const cleanedActorName = scrapedEvent.actorName
+      .replace(/来店実践?/g, "")
+      .replace(/取材/g, "")
+      .replace(/イベント/g, "")
+      .replace(/\s+/g, "")
+      .trim();
+
+    if (cleanedActorName) {
+      // 演者を検索または作成
+      const existingActors = await db.select().from(actors).where(eq(actors.name, cleanedActorName)).limit(1);
+      let actor = existingActors[0];
+
+      if (!actor) {
+        // 演者が存在しない場合は新規作成
+        await db.insert(actors).values({
+          name: cleanedActorName,
+          imageUrl: null,
+          rankScore: 50, // デフォルトスコア
+        });
+
+        // 作成した演者を再取得
+        const newActors = await db.select().from(actors).where(eq(actors.name, cleanedActorName)).limit(1);
+        actor = newActors[0];
+        result.actorsAdded++;
+        console.log(`[Scraper] Created actor: ${cleanedActorName}`);
+      }
+
+      actorId = actor.id;
+    }
+  }
+
+  // 4. イベントを検索または作成
   const existingEvents = await db.select().from(events)
     .where(and(
       eq(events.storeId, store.id),
@@ -197,21 +232,26 @@ async function saveScrapedEvent(
 
     await db.insert(events).values({
       storeId: store.id,
-      actorId: null,
+      actorId: actorId,
       eventDate,
       hotLevel: heatLevel,
       machineType: scrapedEvent.eventType,
-      description: `${scrapedEvent.eventType}取材`,
+      description: scrapedEvent.actorName
+        ? `${scrapedEvent.actorName} ${scrapedEvent.eventType}取材`
+        : `${scrapedEvent.eventType}取材`,
       sourceUrl: scrapedEvent.sourceUrl,
     });
 
     result.eventsAdded++;
-    console.log(`[Scraper] Created event: ${store.name} - ${scrapedEvent.eventType} (${scrapedEvent.eventDate})`);
-  }
+    console.log(`[Scraper] Created event: ${store.name} - ${scrapedEvent.eventType} (${scrapedEvent.eventDate})${actorId ? ` with actor: ${scrapedEvent.actorName}` : ""}`);
+  } else if (existingEvent && actorId && !existingEvent.actorId) {
+    // 既存のイベントに演者情報を追加
+    await db.update(events)
+      .set({ actorId: actorId })
+      .where(eq(events.id, existingEvent.id));
 
-  // 3. 演者情報の処理（現時点では簡易実装）
-  // TODO: 演者名を抽出してactorsテーブルに保存
-  // TODO: イベントと演者を紐付け
+    console.log(`[Scraper] Updated event with actor: ${store.name} - ${scrapedEvent.actorName}`);
+  }
 }
 
 /**

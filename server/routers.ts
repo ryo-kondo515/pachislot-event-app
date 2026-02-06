@@ -162,6 +162,64 @@ export const appRouter = router({
 
   scraper: scraperRouter,
   actors: actorsRouter,
+
+  events: router({
+    list: publicProcedure.query(async () => {
+      const { getDb } = await import("./db-postgres");
+      const { events, stores, actors } = await import("../drizzle/schema-postgres");
+      const { eq, gte, and, desc } = await import("drizzle-orm");
+
+      const db = await getDb();
+      if (!db) {
+        return [];
+      }
+
+      // 当日の日付を取得（日本時間）
+      const now = new Date();
+      const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
+      const jstDate = new Date(now.getTime() + jstOffset);
+      // UTC基準で日付範囲を計算
+      const todayStart = new Date(Date.UTC(jstDate.getUTCFullYear(), jstDate.getUTCMonth(), jstDate.getUTCDate()) - jstOffset);
+
+      // 今日以降のイベントを取得
+      const eventsList = await db
+        .select()
+        .from(events)
+        .where(gte(events.eventDate, todayStart))
+        .orderBy(desc(events.eventDate));
+
+      // イベントに店舗と演者の情報を結合
+      const eventsWithDetails = await Promise.all(
+        eventsList.map(async (event) => {
+          // 店舗情報を取得
+          const storeList = await db
+            .select()
+            .from(stores)
+            .where(eq(stores.id, event.storeId))
+            .limit(1);
+
+          // 演者情報を取得
+          let actor = null;
+          if (event.actorId) {
+            const actorList = await db
+              .select()
+              .from(actors)
+              .where(eq(actors.id, event.actorId))
+              .limit(1);
+            actor = actorList[0] || null;
+          }
+
+          return {
+            ...event,
+            store: storeList[0] || null,
+            actor,
+          };
+        })
+      );
+
+      return eventsWithDetails;
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
