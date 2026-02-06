@@ -201,15 +201,32 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+const resolveApiUrl = () => {
+  // Gemini APIを優先的に使用
+  if (ENV.geminiApiKey && ENV.geminiApiKey.trim().length > 0) {
+    return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  }
+
+  // フォールバック: Forge API
+  if (ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0) {
+    return `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
+  }
+
+  return "https://forge.manus.im/v1/chat/completions";
+};
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (!ENV.geminiApiKey && !ENV.forgeApiKey) {
+    throw new Error("GEMINI_API_KEY or BUILT_IN_FORGE_API_KEY is not configured");
   }
+};
+
+const resolveApiKey = () => {
+  // Gemini APIキーを優先的に使用
+  if (ENV.geminiApiKey && ENV.geminiApiKey.trim().length > 0) {
+    return ENV.geminiApiKey;
+  }
+  return ENV.forgeApiKey;
 };
 
 const normalizeResponseFormat = ({
@@ -267,7 +284,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model: ENV.geminiApiKey ? "gemini-2.0-flash-exp" : "gemini-2.5-flash",
     messages: messages.map(normalizeMessage),
   };
 
@@ -300,7 +317,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${resolveApiKey()}`,
     },
     body: JSON.stringify(payload),
   });
