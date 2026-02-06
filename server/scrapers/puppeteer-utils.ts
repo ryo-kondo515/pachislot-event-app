@@ -41,7 +41,7 @@ export function delay(ms: number): Promise<void> {
  * Puppeteerブラウザを起動する
  */
 export async function launchBrowser(): Promise<Browser> {
-  return await puppeteer.launch({
+  const launchOptions: any = {
     headless: true,
     args: [
       "--no-sandbox",
@@ -52,7 +52,14 @@ export async function launchBrowser(): Promise<Browser> {
       "--no-zygote",
       "--disable-gpu",
     ],
-  });
+  };
+
+  // GitHub ActionsやCI環境でChromiumのパスを指定
+  if (process.env.CI || process.env.GITHUB_ACTIONS) {
+    launchOptions.executablePath = "/usr/bin/chromium-browser";
+  }
+
+  return await puppeteer.launch(launchOptions);
 }
 
 /**
