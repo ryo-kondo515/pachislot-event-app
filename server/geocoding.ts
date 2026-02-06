@@ -1,12 +1,22 @@
 import axios from 'axios';
 import { invokeLLM } from './_core/llm';
+import { ENV } from './_core/env';
 
 /**
  * Google Maps Geocoding APIを使用して、店舗名とエリアから緯度経度を取得する
  */
 export async function geocodeStore(storeName: string, area: string): Promise<{ latitude: string; longitude: string; address: string } | null> {
   try {
-    // LLMを使用して住所と座標を推測
+    // Google Maps APIキーがある場合は、Places API Text Searchを使用
+    if (ENV.googleMapsApiKey && ENV.googleMapsApiKey.trim().length > 0) {
+      const placesResult = await geocodeWithGooglePlaces(storeName, area);
+      if (placesResult) {
+        return placesResult;
+      }
+      console.warn('[Geocoding] Google Places API failed, trying LLM fallback');
+    }
+
+    // LLMを使用して住所と座標を推測（フォールバック）
     const prompt = `以下のパチンコ店の正確な住所と緯度経度を推測してください。
 
 店舗名: ${storeName}
@@ -33,7 +43,7 @@ export async function geocodeStore(storeName: string, area: string): Promise<{ l
       return fallbackGeocode(storeName, area);
     }
     const response = typeof message.content === 'string' ? message.content : message.content.map(c => c.type === 'text' ? c.text : '').join('');
-    
+
     // JSONを抽出
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -51,6 +61,44 @@ export async function geocodeStore(storeName: string, area: string): Promise<{ l
   } catch (error) {
     console.error('[Geocoding] Error:', error);
     return fallbackGeocode(storeName, area);
+  }
+}
+
+/**
+ * Google Maps Places API Text Searchを使用して店舗を検索
+ */
+async function geocodeWithGooglePlaces(storeName: string, area: string): Promise<{ latitude: string; longitude: string; address: string } | null> {
+  try {
+    // パチンコ・パチスロ店として検索
+    const query = `${storeName} ${area} パチンコ`;
+    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${ENV.googleMapsApiKey}`;
+
+    console.log(`[Geocoding] Searching Google Places: ${query}`);
+
+    const response = await axios.get(url, {
+      timeout: 10000,
+    });
+
+    if (response.data.status !== 'OK' || !response.data.results || response.data.results.length === 0) {
+      console.warn(`[Geocoding] Google Places API returned no results for: ${storeName} (status: ${response.data.status})`);
+      return null;
+    }
+
+    const place = response.data.results[0];
+    const latitude = place.geometry.location.lat.toFixed(6);
+    const longitude = place.geometry.location.lng.toFixed(6);
+    const address = place.formatted_address;
+
+    console.log(`[Geocoding] Google Places result: ${storeName} -> ${address} (${latitude}, ${longitude})`);
+
+    return {
+      latitude,
+      longitude,
+      address,
+    };
+  } catch (error) {
+    console.error('[Geocoding] Google Places API error:', error);
+    return null;
   }
 }
 
