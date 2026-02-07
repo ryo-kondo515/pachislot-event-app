@@ -47,6 +47,10 @@
       attributionControl: true
     }).setView([35.6812, 139.7671], 8);
 
+    // マスク用のカスタムペインを作成（マーカーより下に配置）
+    map.createPane('maskPane');
+    map.getPane('maskPane').style.zIndex = 400; // デフォルトのマーカーペインは450
+
     // ズームコントロールを左下に追加
     L.control.zoom({
       position: 'bottomleft'
@@ -180,7 +184,8 @@
           color: 'transparent',
           fillColor: '#f0f0f0',
           fillOpacity: 0.85,
-          interactive: false
+          interactive: false,
+          pane: 'maskPane'  // マスク用ペインに配置
         }).addTo(map);
       } else {
         // 全国表示の場合は制限を解除

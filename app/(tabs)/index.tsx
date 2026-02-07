@@ -67,6 +67,7 @@ export default function MapScreen() {
   // 関東のデータを最初にロード
   useEffect(() => {
     if (kantoStoresData) {
+      console.log('[Kanto] Received stores:', kantoStoresData.length);
       const stores: Store[] = kantoStoresData.map((store: any) => ({
         id: store.id.toString(),
         name: store.name,
@@ -79,6 +80,7 @@ export default function MapScreen() {
         isPremium: store.isPremium === 1,
       }));
 
+      console.log('[Kanto] Converted stores:', stores.length);
       // 関東のデータを先に設定
       setAllStores(stores);
       setSortedStores(stores);
@@ -124,6 +126,7 @@ export default function MapScreen() {
                 isPremium: store.isPremium === 1,
               }));
 
+              console.log(`[${region.name}] Loaded stores:`, regionStores.length);
               // 既存のデータに追加
               setAllStores(prev => [...prev, ...regionStores]);
             }
@@ -166,6 +169,7 @@ export default function MapScreen() {
   // 検索・フィルター処理
   useEffect(() => {
     let result = allStores;
+    console.log('[Filter] All stores:', result.length);
 
     // 地方でフィルタリング（常に選択されている）
     const region = REGIONS.find(r => r.id === selectedRegion);
@@ -173,6 +177,7 @@ export default function MapScreen() {
       result = result.filter(store =>
         region.prefectures.some(pref => store.address.includes(pref))
       );
+      console.log('[Filter] After region filter:', result.length, 'Region:', region.name);
     }
 
     // 検索クエリでフィルタリング
@@ -195,10 +200,12 @@ export default function MapScreen() {
       );
     }
 
+    console.log('[Filter] Final filtered stores:', result.length);
     setFilteredStores(result);
 
     // 地図にフィルタリング済みデータを送信
     if (webViewRef.current) {
+      console.log('[Map] Sending stores to map:', result.length);
       webViewRef.current.postMessage(JSON.stringify({
         type: 'setStores',
         stores: result
