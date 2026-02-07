@@ -41,26 +41,28 @@
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // 地図の初期化
+    // 地図の初期化（日本全体を表示）
     const map = L.map('map', {
       zoomControl: false,
-      attributionControl: false
-    }).setView([35.6812, 139.7671], 12);
+      attributionControl: true
+    }).setView([36.5, 138.0], 5);
 
     // ズームコントロールを左下に追加
     L.control.zoom({
       position: 'bottomleft'
     }).addTo(map);
 
-    // CartoDB Positronタイルレイヤーを追加
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd'
+    // 国土地理院の淡色地図タイルレイヤーを追加（日本向け）
+    L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>'
     }).addTo(map);
 
     // マーカーデータを保持
     let markers = [];
     let selectedMarkerId = null;
+    let currentRegionBounds = null;
+    let regionBoundary = null;
 
     // カスタムアイコンを作成
     function createCustomIcon(hotLevel, isPremium) {
@@ -124,19 +126,52 @@
       });
     }
 
+    // 地方の境界を設定
+    function setRegionBounds(bounds) {
+      // 既存の境界線を削除
+      if (regionBoundary) {
+        map.removeLayer(regionBoundary);
+        regionBoundary = null;
+      }
+
+      if (bounds) {
+        // 地図の表示範囲を制限
+        const leafletBounds = [
+          [bounds.south, bounds.west],
+          [bounds.north, bounds.east]
+        ];
+        map.setMaxBounds(leafletBounds);
+        currentRegionBounds = leafletBounds;
+
+        // 境界線を描画
+        regionBoundary = L.rectangle(leafletBounds, {
+          color: '#3388ff',
+          weight: 2,
+          fillOpacity: 0,
+          dashArray: '5, 5'
+        }).addTo(map);
+      } else {
+        // 全国表示の場合は制限を解除
+        map.setMaxBounds(null);
+        currentRegionBounds = null;
+      }
+    }
+
     // React Nativeからのメッセージを受信
     window.addEventListener('message', (event) => {
       try {
         const data = JSON.parse(event.data);
         console.log('[Map] Received message:', data.type, data.stores ? data.stores.length : 0);
-        
+
         if (data.type === 'setStores') {
           addMarkers(data.stores);
-      } else if (data.type === 'centerMap') {
-        map.setView([data.latitude, data.longitude], data.zoom || 12);
-      } else if (data.type === 'closePreview') {
-        selectedMarkerId = null;
-      }
+        } else if (data.type === 'centerMap') {
+          map.setView([data.latitude, data.longitude], data.zoom || 12);
+        } else if (data.type === 'closePreview') {
+          selectedMarkerId = null;
+        } else if (data.type === 'setRegionBounds') {
+          setRegionBounds(data.bounds);
+        }
       } catch (error) {
         console.error('[Map] Error processing message:', error);
       }

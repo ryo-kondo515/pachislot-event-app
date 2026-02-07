@@ -86,14 +86,26 @@ export default function MapScreen() {
 
   // 地方選択時に地図の表示範囲を調整
   useEffect(() => {
-    if (selectedRegion && webViewRef.current) {
-      const region = REGIONS.find(r => r.id === selectedRegion);
+    if (webViewRef.current) {
+      const region = selectedRegion ? REGIONS.find(r => r.id === selectedRegion) : null;
+
       if (region) {
+        // 地方選択時：地図の中心を移動し、境界を設定
         webViewRef.current.postMessage(JSON.stringify({
           type: 'centerMap',
           latitude: region.center.latitude,
           longitude: region.center.longitude,
           zoom: region.zoom
+        }));
+        webViewRef.current.postMessage(JSON.stringify({
+          type: 'setRegionBounds',
+          bounds: region.bounds
+        }));
+      } else {
+        // 全国表示時：境界を解除
+        webViewRef.current.postMessage(JSON.stringify({
+          type: 'setRegionBounds',
+          bounds: null
         }));
       }
     }

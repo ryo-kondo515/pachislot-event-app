@@ -41,21 +41,21 @@ export function WebMap({ stores, onMarkerClick }: WebMapProps) {
 
       const L = (window as any).L;
       
-      // 地図を初期化
+      // 地図を初期化（日本全体を表示）
       const map = L.map(mapContainerRef.current, {
         zoomControl: false,
-        attributionControl: false
-      }).setView([35.6812, 139.7671], 12);
+        attributionControl: true
+      }).setView([36.5, 138.0], 5);
 
       // ズームコントロールを左下に追加
       L.control.zoom({
         position: 'bottomleft'
       }).addTo(map);
 
-      // CartoDB Positronタイルレイヤーを追加
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd'
+      // 国土地理院の淡色地図タイルレイヤーを追加（日本向け）
+      L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>'
       }).addTo(map);
 
       mapRef.current = map;
