@@ -44,7 +44,7 @@ export function WebMap({ stores, onMarkerClick }: WebMapProps) {
       // 地図を初期化（関東を表示）
       const map = L.map(mapContainerRef.current, {
         zoomControl: false,
-        attributionControl: true
+        attributionControl: false
       }).setView([35.6812, 139.7671], 8);
 
       // ズームコントロールを左下に追加
