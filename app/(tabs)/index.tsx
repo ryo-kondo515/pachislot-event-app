@@ -36,6 +36,8 @@ export default function MapScreen() {
   const [filteredStores, setFilteredStores] = useState<Store[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string | null>('kanto'); // デフォルトは関東
   const [loadingRegions, setLoadingRegions] = useState<Set<string>>(new Set(['kanto']));
+  const [loadedRegions, setLoadedRegions] = useState<Set<string>>(new Set()); // ロード完了した地域
+  const [isRegionLoading, setIsRegionLoading] = useState(false); // 地域切り替え時のローディング
 
   // 優先地域（関東）のデータを取得
   const kantoRegion = REGIONS.find(r => r.id === 'kanto');
@@ -89,6 +91,7 @@ export default function MapScreen() {
         next.delete('kanto');
         return next;
       });
+      setLoadedRegions(prev => new Set([...prev, 'kanto']));
     }
   }, [kantoStoresData]);
 
@@ -129,6 +132,8 @@ export default function MapScreen() {
               console.log(`[${region.name}] Loaded stores:`, regionStores.length);
               // 既存のデータに追加
               setAllStores(prev => [...prev, ...regionStores]);
+              // ロード完了を記録
+              setLoadedRegions(prev => new Set([...prev, region.id]));
             }
           } catch (error) {
             console.error(`Failed to load region ${region.id}:`, error);
@@ -165,6 +170,64 @@ export default function MapScreen() {
   useEffect(() => {
     setSortedStores([...allStores]);
   }, [allStores]);
+
+  // 地方選択時にロード状態をチェックして、未ロードなら即座にロード
+  useEffect(() => {
+    if (selectedRegion && !loadedRegions.has(selectedRegion) && !loadingRegions.has(selectedRegion)) {
+      console.log(`[Region] ${selectedRegion} is not loaded yet, loading now...`);
+      setIsRegionLoading(true);
+
+      // 即座にその地域のデータをロード
+      const region = REGIONS.find(r => r.id === selectedRegion);
+      if (region) {
+        const loadRegion = async () => {
+          try {
+            setLoadingRegions(prev => new Set([...prev, selectedRegion]));
+
+            const input = { prefectures: region.prefectures };
+            const response = await fetch(
+              '/api/trpc/stores.listByRegion?' + new URLSearchParams({
+                input: JSON.stringify(input)
+              })
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              const regionStores: Store[] = (data.result?.data || []).map((store: any) => ({
+                id: store.id.toString(),
+                name: store.name,
+                address: store.address,
+                latitude: parseFloat(store.latitude),
+                longitude: parseFloat(store.longitude),
+                hotLevel: store.events[0]?.hotLevel || 3,
+                machineCount: store.machineCount,
+                openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
+                isPremium: store.isPremium === 1,
+              }));
+
+              console.log(`[${region.name}] Loaded stores on demand:`, regionStores.length);
+              setAllStores(prev => [...prev, ...regionStores]);
+              setLoadedRegions(prev => new Set([...prev, selectedRegion]));
+              setIsRegionLoading(false);
+            }
+          } catch (error) {
+            console.error(`Failed to load region ${selectedRegion}:`, error);
+            setIsRegionLoading(false);
+          } finally {
+            setLoadingRegions(prev => {
+              const next = new Set(prev);
+              next.delete(selectedRegion);
+              return next;
+            });
+          }
+        };
+
+        loadRegion();
+      }
+    } else if (selectedRegion && loadedRegions.has(selectedRegion)) {
+      setIsRegionLoading(false);
+    }
+  }, [selectedRegion, loadedRegions, loadingRegions]);
 
   // 検索・フィルター処理
   useEffect(() => {
@@ -312,21 +375,25 @@ export default function MapScreen() {
 
         <Text style={[styles.webTitle, { color: colors.foreground, paddingHorizontal: 16 }]}>
           店舗一覧 - {REGIONS.find(r => r.id === selectedRegion)?.name}
-          {filteredStores.length > 0 && ` (${filteredStores.length}件)`}
+          {filteredStores.length > 0 && !isRegionLoading && ` (${filteredStores.length}件)`}
         </Text>
         <ScrollView style={{ flex: 1, padding: 16 }}>
-          {kantoLoading && (
+          {(kantoLoading || isRegionLoading) && (
             <View style={{ padding: 20, alignItems: 'center' }}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[{ marginTop: 10, color: colors.muted }]}>店舗情報を読み込んでいます...</Text>
+              <Text style={[{ marginTop: 10, color: colors.muted }]}>
+                {isRegionLoading
+                  ? `${REGIONS.find(r => r.id === selectedRegion)?.name}の店舗情報を読み込んでいます...`
+                  : '店舗情報を読み込んでいます...'}
+              </Text>
             </View>
           )}
-          {!kantoLoading && filteredStores.length === 0 && (
+          {!kantoLoading && !isRegionLoading && filteredStores.length === 0 && (
             <View style={{ padding: 20, alignItems: 'center' }}>
               <Text style={[{ color: colors.muted }]}>この地方には店舗情報がありません</Text>
             </View>
           )}
-          {filteredStores.map((store: Store) => (
+          {!kantoLoading && !isRegionLoading && filteredStores.map((store: Store) => (
             <Pressable
               key={store.id}
               onPress={() => router.push(`/store/${store.id}` as any)}
@@ -357,12 +424,15 @@ export default function MapScreen() {
     );
   }
 
-  if (!mapHtml || kantoLoading) {
+  if (!mapHtml || kantoLoading || isRegionLoading) {
+    const regionName = selectedRegion ? REGIONS.find(r => r.id === selectedRegion)?.name : '';
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 100 }} />
         <Text style={[styles.loadingText, { color: colors.foreground }]}>
-          {!mapHtml ? '地図を読み込んでいます...' : '店舗情報を読み込んでいます...'}
+          {!mapHtml ? '地図を読み込んでいます...' :
+           isRegionLoading ? `${regionName}の店舗情報を読み込んでいます...` :
+           '店舗情報を読み込んでいます...'}
         </Text>
       </View>
     );
