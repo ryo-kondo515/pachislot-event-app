@@ -15,6 +15,8 @@ import { useLocation } from '@/hooks/use-location';
 import { calculateDistance, formatDistance } from '@/lib/location-utils';
 import { SearchBar } from '@/components/search-bar';
 import { FilterPanel, FilterOptions } from '@/components/filter-panel';
+import { RegionSelector } from '@/components/region-selector';
+import { REGIONS } from '@/constants/const';
 
 export default function MapScreen() {
   const colors = useColors();
@@ -32,6 +34,7 @@ export default function MapScreen() {
     areas: [],
   });
   const [filteredStores, setFilteredStores] = useState<Store[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
 
   // HTMLファイルを読み込む（Web版ではスキップ）
   useEffect(() => {
@@ -81,9 +84,34 @@ export default function MapScreen() {
     }
   }, [storesData]);
 
+  // 地方選択時に地図の表示範囲を調整
+  useEffect(() => {
+    if (selectedRegion && webViewRef.current) {
+      const region = REGIONS.find(r => r.id === selectedRegion);
+      if (region) {
+        webViewRef.current.postMessage(JSON.stringify({
+          type: 'centerMap',
+          latitude: region.center.latitude,
+          longitude: region.center.longitude,
+          zoom: region.zoom
+        }));
+      }
+    }
+  }, [selectedRegion]);
+
   // 検索・フィルター処理
   useEffect(() => {
     let result = sortedStores;
+
+    // 地方でフィルタリング
+    if (selectedRegion) {
+      const region = REGIONS.find(r => r.id === selectedRegion);
+      if (region) {
+        result = result.filter(store =>
+          region.prefectures.some(pref => store.address.includes(pref))
+        );
+      }
+    }
 
     // 検索クエリでフィルタリング
     if (searchQuery) {
@@ -115,7 +143,7 @@ export default function MapScreen() {
         stores: result
       }));
     }
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, selectedRegion]);
 
   // 地図が読み込まれたら店舗データを送信
   const handleMapReady = useCallback(() => {
@@ -217,7 +245,19 @@ export default function MapScreen() {
   if (Platform.OS === 'web') {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.webTitle, { color: colors.foreground, padding: 16 }]}>店舗一覧（地図表示はWeb版では未対応）</Text>
+        {/* 地方選択 */}
+        <View style={{ padding: 16 }}>
+          <RegionSelector
+            selectedRegion={selectedRegion}
+            onRegionChange={setSelectedRegion}
+          />
+        </View>
+
+        <Text style={[styles.webTitle, { color: colors.foreground, paddingHorizontal: 16 }]}>
+          店舗一覧
+          {selectedRegion && ` - ${REGIONS.find(r => r.id === selectedRegion)?.name}`}
+          {filteredStores.length > 0 && ` (${filteredStores.length}件)`}
+        </Text>
         <ScrollView style={{ flex: 1, padding: 16 }}>
           {storesLoading && (
             <View style={{ padding: 20, alignItems: 'center' }}>
@@ -231,13 +271,14 @@ export default function MapScreen() {
               <Text style={[{ marginTop: 10, color: colors.muted, fontSize: 12 }]}>{storesError.message}</Text>
             </View>
           )}
-          {!storesLoading && !storesError && sortedStores.length === 0 && (
+          {!storesLoading && !storesError && filteredStores.length === 0 && (
             <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={[{ color: colors.muted }]}>店舗情報がありません</Text>
-              <Text style={[{ marginTop: 10, color: colors.muted, fontSize: 12 }]}>APIデータ: {storesData ? storesData.length : 0}件</Text>
+              <Text style={[{ color: colors.muted }]}>
+                {selectedRegion ? 'この地方には店舗情報がありません' : '店舗情報がありません'}
+              </Text>
             </View>
           )}
-          {sortedStores.map((store: Store) => (
+          {filteredStores.map((store: Store) => (
             <Pressable
               key={store.id}
               onPress={() => router.push(`/store/${store.id}` as any)}
@@ -343,6 +384,12 @@ export default function MapScreen() {
           <IconSymbol name="location.fill" size={24} color={colors.primary} />
         )}
       </Pressable>
+
+      {/* 地方選択 */}
+      <RegionSelector
+        selectedRegion={selectedRegion}
+        onRegionChange={setSelectedRegion}
+      />
 
       {/* 凡例 */}
       <View style={[styles.legend, { backgroundColor: colors.surface }]}>
@@ -541,7 +588,7 @@ const styles = StyleSheet.create({
   },
   legend: {
     position: 'absolute',
-    top: 190,
+    top: 290,
     left: 16,
     padding: 12,
     borderRadius: 12,
