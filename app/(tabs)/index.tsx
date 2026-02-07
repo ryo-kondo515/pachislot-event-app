@@ -34,7 +34,7 @@ export default function MapScreen() {
     areas: [],
   });
   const [filteredStores, setFilteredStores] = useState<Store[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>('kanto'); // デフォルトは関東
 
   // HTMLファイルを読み込む（Web版ではスキップ）
   useEffect(() => {
@@ -86,8 +86,8 @@ export default function MapScreen() {
 
   // 地方選択時に地図の表示範囲を調整
   useEffect(() => {
-    if (webViewRef.current) {
-      const region = selectedRegion ? REGIONS.find(r => r.id === selectedRegion) : null;
+    if (webViewRef.current && selectedRegion) {
+      const region = REGIONS.find(r => r.id === selectedRegion);
 
       if (region) {
         // 地方選択時：地図の中心を移動し、境界を設定
@@ -101,12 +101,6 @@ export default function MapScreen() {
           type: 'setRegionBounds',
           bounds: region.bounds
         }));
-      } else {
-        // 全国表示時：境界を解除
-        webViewRef.current.postMessage(JSON.stringify({
-          type: 'setRegionBounds',
-          bounds: null
-        }));
       }
     }
   }, [selectedRegion]);
@@ -115,14 +109,12 @@ export default function MapScreen() {
   useEffect(() => {
     let result = sortedStores;
 
-    // 地方でフィルタリング
-    if (selectedRegion) {
-      const region = REGIONS.find(r => r.id === selectedRegion);
-      if (region) {
-        result = result.filter(store =>
-          region.prefectures.some(pref => store.address.includes(pref))
-        );
-      }
+    // 地方でフィルタリング（常に選択されている）
+    const region = REGIONS.find(r => r.id === selectedRegion);
+    if (region) {
+      result = result.filter(store =>
+        region.prefectures.some(pref => store.address.includes(pref))
+      );
     }
 
     // 検索クエリでフィルタリング
@@ -266,8 +258,7 @@ export default function MapScreen() {
         </View>
 
         <Text style={[styles.webTitle, { color: colors.foreground, paddingHorizontal: 16 }]}>
-          店舗一覧
-          {selectedRegion && ` - ${REGIONS.find(r => r.id === selectedRegion)?.name}`}
+          店舗一覧 - {REGIONS.find(r => r.id === selectedRegion)?.name}
           {filteredStores.length > 0 && ` (${filteredStores.length}件)`}
         </Text>
         <ScrollView style={{ flex: 1, padding: 16 }}>
@@ -285,9 +276,7 @@ export default function MapScreen() {
           )}
           {!storesLoading && !storesError && filteredStores.length === 0 && (
             <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={[{ color: colors.muted }]}>
-                {selectedRegion ? 'この地方には店舗情報がありません' : '店舗情報がありません'}
-              </Text>
+              <Text style={[{ color: colors.muted }]}>この地方には店舗情報がありません</Text>
             </View>
           )}
           {filteredStores.map((store: Store) => (

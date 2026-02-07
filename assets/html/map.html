@@ -41,11 +41,11 @@
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // 地図の初期化（日本全体を表示）
+    // 地図の初期化（関東を表示）
     const map = L.map('map', {
       zoomControl: false,
       attributionControl: true
-    }).setView([36.5, 138.0], 5);
+    }).setView([35.6812, 139.7671], 8);
 
     // ズームコントロールを左下に追加
     L.control.zoom({
@@ -63,6 +63,7 @@
     let selectedMarkerId = null;
     let currentRegionBounds = null;
     let regionBoundary = null;
+    let maskLayer = null;
 
     // カスタムアイコンを作成
     function createCustomIcon(hotLevel, isPremium) {
@@ -128,10 +129,14 @@
 
     // 地方の境界を設定
     function setRegionBounds(bounds) {
-      // 既存の境界線を削除
+      // 既存の境界線とマスクを削除
       if (regionBoundary) {
         map.removeLayer(regionBoundary);
         regionBoundary = null;
+      }
+      if (maskLayer) {
+        map.removeLayer(maskLayer);
+        maskLayer = null;
       }
 
       if (bounds) {
@@ -149,6 +154,33 @@
           weight: 2,
           fillOpacity: 0,
           dashArray: '5, 5'
+        }).addTo(map);
+
+        // 地方以外の範囲をマスク（逆マスクポリゴン）
+        // 大きな外側の矩形から地方の矩形をくり抜く
+        const outerBounds = [
+          [85, -180],   // 北西
+          [85, 180],    // 北東
+          [-85, 180],   // 南東
+          [-85, -180],  // 南西
+          [85, -180]    // 閉じる
+        ];
+        const innerBounds = [
+          [bounds.north, bounds.west],  // 北西
+          [bounds.north, bounds.east],  // 北東
+          [bounds.south, bounds.east],  // 南東
+          [bounds.south, bounds.west],  // 南西
+          [bounds.north, bounds.west]   // 閉じる
+        ];
+
+        // 外側の矩形と内側の矩形（穴）を持つポリゴン
+        const maskPolygon = [outerBounds, innerBounds];
+
+        maskLayer = L.polygon(maskPolygon, {
+          color: 'transparent',
+          fillColor: '#f0f0f0',
+          fillOpacity: 0.85,
+          interactive: false
         }).addTo(map);
       } else {
         // 全国表示の場合は制限を解除
@@ -181,6 +213,10 @@
     window.ReactNativeWebView.postMessage(JSON.stringify({
       type: 'mapReady'
     }));
+
+    // 初期状態で関東の境界を設定
+    const kantoBounds = { north: 37.0, south: 34.8, east: 140.9, west: 138.4 };
+    setRegionBounds(kantoBounds);
   </script>
 </body>
 </html>

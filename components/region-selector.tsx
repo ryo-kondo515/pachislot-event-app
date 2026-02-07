@@ -17,10 +17,8 @@ export function RegionSelector({ selectedRegion, onRegionChange, style }: Region
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
 
-    // 同じ地方をタップした場合は選択解除(全国表示に戻る)
-    if (selectedRegion === regionId) {
-      onRegionChange(null);
-    } else {
+    // 常にどれかの地方を選択状態にする（選択解除は不可）
+    if (selectedRegion !== regionId) {
       onRegionChange(regionId);
     }
   };

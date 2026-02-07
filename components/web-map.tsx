@@ -41,11 +41,11 @@ export function WebMap({ stores, onMarkerClick }: WebMapProps) {
 
       const L = (window as any).L;
       
-      // 地図を初期化（日本全体を表示）
+      // 地図を初期化（関東を表示）
       const map = L.map(mapContainerRef.current, {
         zoomControl: false,
         attributionControl: true
-      }).setView([36.5, 138.0], 5);
+      }).setView([35.6812, 139.7671], 8);
 
       // ズームコントロールを左下に追加
       L.control.zoom({
