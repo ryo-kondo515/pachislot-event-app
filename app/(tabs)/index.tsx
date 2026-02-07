@@ -56,7 +56,7 @@ export default function MapScreen() {
     loadMapHtml();
   }, []);
 
-  // APIデータを初期化
+  // APIデータを初期化（優先的に選択地域を表示）
   useEffect(() => {
     if (storesData) {
       // APIデータをStore型に変換
@@ -71,18 +71,32 @@ export default function MapScreen() {
         openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
         isPremium: store.isPremium === 1,
       }));
-      setSortedStores(stores);
-      setFilteredStores(stores);
 
-      // 地図にデータを送信
-      if (webViewRef.current && stores.length > 0) {
-        webViewRef.current.postMessage(JSON.stringify({
-          type: 'setStores',
-          stores: stores
-        }));
+      // 選択地域の店舗を優先的に処理
+      const selectedRegionData = REGIONS.find(r => r.id === selectedRegion);
+      if (selectedRegionData) {
+        const priorityStores = stores.filter(store =>
+          selectedRegionData.prefectures.some(pref => store.address.includes(pref))
+        );
+        const otherStores = stores.filter(store =>
+          !selectedRegionData.prefectures.some(pref => store.address.includes(pref))
+        );
+
+        // 優先地域の店舗を先に設定（地図への表示はフィルター処理で行われる）
+        setSortedStores([...priorityStores]);
+
+        // 他の地域のデータは少し遅延させて追加（バックグラウンドロード）
+        if (otherStores.length > 0) {
+          setTimeout(() => {
+            setSortedStores([...priorityStores, ...otherStores]);
+          }, 300);
+        }
+      } else {
+        // 全データを設定
+        setSortedStores(stores);
       }
     }
-  }, [storesData]);
+  }, [storesData, selectedRegion]);
 
   // 地方選択時に地図の表示範囲を調整
   useEffect(() => {
@@ -138,7 +152,6 @@ export default function MapScreen() {
     }
 
     setFilteredStores(result);
-    setSortedStores(result);
 
     // 地図にフィルタリング済みデータを送信
     if (webViewRef.current) {
@@ -147,7 +160,7 @@ export default function MapScreen() {
         stores: result
       }));
     }
-  }, [searchQuery, filters, selectedRegion]);
+  }, [sortedStores, searchQuery, filters, selectedRegion]);
 
   // 地図が読み込まれたら店舗データを送信
   const handleMapReady = useCallback(() => {

@@ -52,10 +52,10 @@ export function WebMap({ stores, onMarkerClick }: WebMapProps) {
         position: 'bottomleft'
       }).addTo(map);
 
-      // 国土地理院の淡色地図タイルレイヤーを追加（日本向け）
-      L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
-        maxZoom: 18,
-        attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>'
+      // CartoDB Positronタイルレイヤーを追加
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd'
       }).addTo(map);
 
       mapRef.current = map;
