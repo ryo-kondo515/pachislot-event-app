@@ -38,6 +38,7 @@ export default function MapScreen() {
   const [loadingRegions, setLoadingRegions] = useState<Set<string>>(new Set(['kanto']));
   const [loadedRegions, setLoadedRegions] = useState<Set<string>>(new Set()); // ロード完了した地域
   const [isRegionLoading, setIsRegionLoading] = useState(false); // 地域切り替え時のローディング
+  const [backgroundLoadStarted, setBackgroundLoadStarted] = useState(false); // バックグラウンドロード開始フラグ
 
   // 優先地域（関東）のデータを取得
   const kantoRegion = REGIONS.find(r => r.id === 'kanto');
@@ -97,7 +98,10 @@ export default function MapScreen() {
 
   // 関東のデータロード完了後、他の地域を順次ロード
   useEffect(() => {
-    if (allStores.length > 0 && !loadingRegions.has('kanto')) {
+    if (loadedRegions.has('kanto') && !backgroundLoadStarted) {
+      console.log('[Background] Starting background load for other regions...');
+      setBackgroundLoadStarted(true);
+
       // 関東以外の地域を取得
       const otherRegions = REGIONS.filter(r => r.id !== 'kanto');
 
@@ -105,8 +109,9 @@ export default function MapScreen() {
       const loadOtherRegions = async () => {
         for (const region of otherRegions) {
           try {
+            console.log(`[Background] Loading ${region.name}...`);
             // 少し遅延させてAPIリクエストを分散
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             const input = { prefectures: region.prefectures };
             const response = await fetch(
@@ -129,21 +134,24 @@ export default function MapScreen() {
                 isPremium: store.isPremium === 1,
               }));
 
-              console.log(`[${region.name}] Loaded stores:`, regionStores.length);
+              console.log(`[Background] ${region.name} loaded:`, regionStores.length, 'stores');
               // 既存のデータに追加
               setAllStores(prev => [...prev, ...regionStores]);
               // ロード完了を記録
               setLoadedRegions(prev => new Set([...prev, region.id]));
+            } else {
+              console.error(`[Background] Failed to load ${region.name}: HTTP ${response.status}`);
             }
           } catch (error) {
-            console.error(`Failed to load region ${region.id}:`, error);
+            console.error(`[Background] Failed to load region ${region.id}:`, error);
           }
         }
+        console.log('[Background] All regions loaded');
       };
 
       loadOtherRegions();
     }
-  }, [allStores.length, loadingRegions]);
+  }, [loadedRegions, backgroundLoadStarted]);
 
   // 地方選択時に地図の表示範囲を調整
   useEffect(() => {
