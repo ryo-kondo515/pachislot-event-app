@@ -14,7 +14,7 @@ export interface ScrapedEvent {
 /**
  * イベントタイプからアツさレベルを判定
  */
-export function getHeatLevel(eventType: string): number {
+export function getHeatLevel(eventType: string, rating?: number): number {
   const type = eventType.toLowerCase();
   if (type.includes("マグロ") || type.includes("maguro")) return 5;
   if (type.includes("ジャンドリ") || type.includes("jyandri")) return 4;

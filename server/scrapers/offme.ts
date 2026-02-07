@@ -134,7 +134,7 @@ function parseDateString(dateStr: string, year: number): string {
 /**
  * イベントタイプからアツさレベルを判定
  */
-export function getHeatLevel(eventType: string): number {
+export function getHeatLevel(eventType: string, rating?: number): number {
   if (eventType.includes("グラレポ")) return 4;
   if (eventType.includes("AI")) return 4;
   if (eventType.includes("だるま")) return 5;

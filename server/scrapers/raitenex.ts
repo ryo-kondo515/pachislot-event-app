@@ -9,6 +9,7 @@ export interface ScrapedEvent {
   sourceUrl: string;
   scrapedAt: Date;
   actorName?: string; // raiten-ex.comのみ
+  rating?: number; // raiten-ex.comの総合評価（アツい度）
 }
 
 /**
@@ -68,6 +69,7 @@ export async function scrapeRaitenEx(): Promise<ScrapedEvent[]> {
         eventDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
         eventType,
         actorName,
+        rating: rating ? parseFloat(rating) : undefined,
         sourceUrl: url,
         scrapedAt: new Date(),
       });
@@ -85,9 +87,17 @@ export async function scrapeRaitenEx(): Promise<ScrapedEvent[]> {
  * raiten-ex.comのアツさレベルを計算
  * 総合評価を基準に計算
  */
-export function getHeatLevel(eventType: string): number {
-  // raiten-ex.comには評価データがあるが、現在のScrapedEvent型には含まれていない
-  // デフォルトで中程度のアツさレベルを返す
+export function getHeatLevel(eventType: string, rating?: number): number {
+  // ratingがある場合は、総合評価から計算
+  if (rating !== undefined) {
+    if (rating >= 4.5) return 5;
+    if (rating >= 4.0) return 4;
+    if (rating >= 3.5) return 3;
+    if (rating >= 3.0) return 2;
+    return 1;
+  }
+
+  // ratingがない場合はデフォルト
   return 3;
 }
 

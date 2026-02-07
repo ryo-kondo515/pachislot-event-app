@@ -100,7 +100,7 @@ function parseDateString(dateStr: string, year: number): string {
 /**
  * イベントタイプからアツさレベルを判定
  */
-export function getHeatLevel(eventType: string): number {
+export function getHeatLevel(eventType: string, rating?: number): number {
   return 3;
 }
 

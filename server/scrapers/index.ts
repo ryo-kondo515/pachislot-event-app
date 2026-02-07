@@ -117,9 +117,9 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
  * スクレイピング結果をデータベースに保存
  */
 async function saveScrapedEvent(
-  scrapedEvent: ScrapedEvent, 
+  scrapedEvent: ScrapedEvent,
   result: ScrapingResult,
-  getHeatLevel: (eventType: string) => number,
+  getHeatLevel: (eventType: string, rating?: number) => number,
   guessStoreAddress: (storeName: string, area: string) => string
 ): Promise<void> {
   const { getDb } = await import("../db-postgres");
@@ -228,7 +228,7 @@ async function saveScrapedEvent(
 
   if (!existingEvent && store) {
     // イベントが存在しない場合は新規作成
-    const heatLevel = getHeatLevel(scrapedEvent.eventType);
+    const heatLevel = getHeatLevel(scrapedEvent.eventType, scrapedEvent.rating);
 
     await db.insert(events).values({
       storeId: store.id,

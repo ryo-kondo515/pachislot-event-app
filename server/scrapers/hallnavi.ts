@@ -112,7 +112,7 @@ function parseDateString(dateStr: string, year: number): string {
 /**
  * イベントタイプからアツさレベルを判定
  */
-export function getHeatLevel(eventType: string): number {
+export function getHeatLevel(eventType: string, rating?: number): number {
   // hall-navi.comは取材の種類が多様なため、一律レベル3とする
   return 3;
 }
