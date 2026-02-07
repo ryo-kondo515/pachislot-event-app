@@ -25,7 +25,7 @@ export default function MapScreen() {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [mapHtml, setMapHtml] = useState<string>('');
   const [sortedStores, setSortedStores] = useState<Store[]>([]);
-  const { data: storesData, isLoading: storesLoading, error: storesError } = trpc.stores.list.useQuery();
+  const [allStores, setAllStores] = useState<Store[]>([]);
   const { location, loading: locationLoading, getCurrentLocation } = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -35,6 +35,14 @@ export default function MapScreen() {
   });
   const [filteredStores, setFilteredStores] = useState<Store[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string | null>('kanto'); // デフォルトは関東
+  const [loadingRegions, setLoadingRegions] = useState<Set<string>>(new Set(['kanto']));
+
+  // 優先地域（関東）のデータを取得
+  const kantoRegion = REGIONS.find(r => r.id === 'kanto');
+  const { data: kantoStoresData, isLoading: kantoLoading } = trpc.stores.listByRegion.useQuery(
+    { prefectures: kantoRegion?.prefectures || [] },
+    { enabled: !!kantoRegion }
+  );
 
   // HTMLファイルを読み込む（Web版ではスキップ）
   useEffect(() => {
@@ -56,11 +64,10 @@ export default function MapScreen() {
     loadMapHtml();
   }, []);
 
-  // APIデータを初期化（優先的に選択地域を表示）
+  // 関東のデータを最初にロード
   useEffect(() => {
-    if (storesData) {
-      // APIデータをStore型に変換
-      const stores: Store[] = storesData.map((store: any) => ({
+    if (kantoStoresData) {
+      const stores: Store[] = kantoStoresData.map((store: any) => ({
         id: store.id.toString(),
         name: store.name,
         address: store.address,
@@ -72,31 +79,63 @@ export default function MapScreen() {
         isPremium: store.isPremium === 1,
       }));
 
-      // 選択地域の店舗を優先的に処理
-      const selectedRegionData = REGIONS.find(r => r.id === selectedRegion);
-      if (selectedRegionData) {
-        const priorityStores = stores.filter(store =>
-          selectedRegionData.prefectures.some(pref => store.address.includes(pref))
-        );
-        const otherStores = stores.filter(store =>
-          !selectedRegionData.prefectures.some(pref => store.address.includes(pref))
-        );
-
-        // 優先地域の店舗を先に設定（地図への表示はフィルター処理で行われる）
-        setSortedStores([...priorityStores]);
-
-        // 他の地域のデータは少し遅延させて追加（バックグラウンドロード）
-        if (otherStores.length > 0) {
-          setTimeout(() => {
-            setSortedStores([...priorityStores, ...otherStores]);
-          }, 300);
-        }
-      } else {
-        // 全データを設定
-        setSortedStores(stores);
-      }
+      // 関東のデータを先に設定
+      setAllStores(stores);
+      setSortedStores(stores);
+      setLoadingRegions(prev => {
+        const next = new Set(prev);
+        next.delete('kanto');
+        return next;
+      });
     }
-  }, [storesData, selectedRegion]);
+  }, [kantoStoresData]);
+
+  // 関東のデータロード完了後、他の地域を順次ロード
+  useEffect(() => {
+    if (allStores.length > 0 && !loadingRegions.has('kanto')) {
+      // 関東以外の地域を取得
+      const otherRegions = REGIONS.filter(r => r.id !== 'kanto');
+
+      // 各地域を順次ロード
+      const loadOtherRegions = async () => {
+        for (const region of otherRegions) {
+          try {
+            // 少し遅延させてAPIリクエストを分散
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            const input = { prefectures: region.prefectures };
+            const response = await fetch(
+              '/api/trpc/stores.listByRegion?' + new URLSearchParams({
+                input: JSON.stringify(input)
+              })
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              const regionStores: Store[] = (data.result?.data || []).map((store: any) => ({
+                id: store.id.toString(),
+                name: store.name,
+                address: store.address,
+                latitude: parseFloat(store.latitude),
+                longitude: parseFloat(store.longitude),
+                hotLevel: store.events[0]?.hotLevel || 3,
+                machineCount: store.machineCount,
+                openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
+                isPremium: store.isPremium === 1,
+              }));
+
+              // 既存のデータに追加
+              setAllStores(prev => [...prev, ...regionStores]);
+            }
+          } catch (error) {
+            console.error(`Failed to load region ${region.id}:`, error);
+          }
+        }
+      };
+
+      loadOtherRegions();
+    }
+  }, [allStores.length, loadingRegions]);
 
   // 地方選択時に地図の表示範囲を調整
   useEffect(() => {
@@ -119,9 +158,14 @@ export default function MapScreen() {
     }
   }, [selectedRegion]);
 
+  // allStoresが更新されたらsortedStoresも更新
+  useEffect(() => {
+    setSortedStores([...allStores]);
+  }, [allStores]);
+
   // 検索・フィルター処理
   useEffect(() => {
-    let result = sortedStores;
+    let result = allStores;
 
     // 地方でフィルタリング（常に選択されている）
     const region = REGIONS.find(r => r.id === selectedRegion);
@@ -160,17 +204,17 @@ export default function MapScreen() {
         stores: result
       }));
     }
-  }, [sortedStores, searchQuery, filters, selectedRegion]);
+  }, [allStores, searchQuery, filters, selectedRegion]);
 
   // 地図が読み込まれたら店舗データを送信
   const handleMapReady = useCallback(() => {
-    if (webViewRef.current && sortedStores.length > 0) {
+    if (webViewRef.current && filteredStores.length > 0) {
       webViewRef.current.postMessage(JSON.stringify({
         type: 'setStores',
-        stores: sortedStores
+        stores: filteredStores
       }));
     }
-  }, [sortedStores]);
+  }, [filteredStores]);
 
   // WebViewからのメッセージを処理
   const handleMessage = useCallback((event: any) => {
@@ -183,7 +227,7 @@ export default function MapScreen() {
         if (Platform.OS !== 'web') {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
-        const store = sortedStores.find((s: Store) => s.id === data.store.id);
+        const store = allStores.find((s: Store) => s.id === data.store.id);
         if (store) {
           setSelectedStore(store);
         }
@@ -191,7 +235,7 @@ export default function MapScreen() {
     } catch (error) {
       console.error('Failed to parse message:', error);
     }
-  }, [handleMapReady]);
+  }, [handleMapReady, allStores]);
 
   const handleStoreDetailPress = useCallback(async () => {
     if (selectedStore) {
@@ -199,16 +243,11 @@ export default function MapScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
 
-      // officialUrlがあれば外部ブラウザで開く
-      const store = storesData?.find((s: any) => s.id.toString() === selectedStore.id);
-      if (store?.officialUrl) {
-        await WebBrowser.openBrowserAsync(store.officialUrl);
-      } else {
-        // officialUrlがない場合は詳細ページに遷移（未実装）
-        router.push(`/store/${selectedStore.id}` as any);
-      }
+      // officialUrlがある場合は外部ブラウザで開く（将来の拡張用）
+      // 現在は詳細ページに遷移
+      router.push(`/store/${selectedStore.id}` as any);
     }
-  }, [selectedStore, router, storesData]);
+  }, [selectedStore, router]);
 
   const handleCurrentLocation = useCallback(async () => {
     if (Platform.OS !== 'web') {
@@ -228,7 +267,7 @@ export default function MapScreen() {
       }));
 
       // 距離順にソート
-      const storesWithDistance = sortedStores.map((store: Store) => ({
+      const storesWithDistance = allStores.map((store: Store) => ({
         ...store,
         distance: calculateDistance(
           userLocation.latitude,
@@ -239,13 +278,7 @@ export default function MapScreen() {
       }));
 
       const sorted = storesWithDistance.sort((a: Store & { distance: number }, b: Store & { distance: number }) => a.distance - b.distance);
-      setSortedStores(sorted);
-
-      // ソート済みデータを地図に送信
-      webViewRef.current.postMessage(JSON.stringify({
-        type: 'setStores',
-        stores: sorted
-      }));
+      setAllStores(sorted);
     }
   }, [getCurrentLocation]);
 
@@ -275,19 +308,13 @@ export default function MapScreen() {
           {filteredStores.length > 0 && ` (${filteredStores.length}件)`}
         </Text>
         <ScrollView style={{ flex: 1, padding: 16 }}>
-          {storesLoading && (
+          {kantoLoading && (
             <View style={{ padding: 20, alignItems: 'center' }}>
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={[{ marginTop: 10, color: colors.muted }]}>店舗情報を読み込んでいます...</Text>
             </View>
           )}
-          {storesError && (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={[{ color: colors.error, fontSize: 16, fontWeight: 'bold' }]}>エラーが発生しました</Text>
-              <Text style={[{ marginTop: 10, color: colors.muted, fontSize: 12 }]}>{storesError.message}</Text>
-            </View>
-          )}
-          {!storesLoading && !storesError && filteredStores.length === 0 && (
+          {!kantoLoading && filteredStores.length === 0 && (
             <View style={{ padding: 20, alignItems: 'center' }}>
               <Text style={[{ color: colors.muted }]}>この地方には店舗情報がありません</Text>
             </View>
@@ -323,11 +350,12 @@ export default function MapScreen() {
     );
   }
 
-  if (!mapHtml) {
+  if (!mapHtml || kantoLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 100 }} />
         <Text style={[styles.loadingText, { color: colors.foreground }]}>
-          地図を読み込んでいます...
+          {!mapHtml ? '地図を読み込んでいます...' : '店舗情報を読み込んでいます...'}
         </Text>
       </View>
     );

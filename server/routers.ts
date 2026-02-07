@@ -16,6 +16,85 @@ export const appRouter = router({
   }),
 
   stores: router({
+    listByRegion: publicProcedure
+      .input(z.object({ prefectures: z.array(z.string()) }))
+      .query(async ({ input }) => {
+        const { getDb } = await import("./db-postgres");
+        const { stores, events, actors } = await import("../drizzle/schema-postgres");
+        const { eq, and, gte, lte, or, like } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) {
+          return [];
+        }
+
+        // 当日の日付を取得（日本時間）
+        const now = new Date();
+        const jstOffset = 9 * 60 * 60 * 1000; // JST = UTC+9
+        const jstDate = new Date(now.getTime() + jstOffset);
+        // UTC基準で日付範囲を計算
+        const todayStart = new Date(Date.UTC(jstDate.getUTCFullYear(), jstDate.getUTCMonth(), jstDate.getUTCDate()) - jstOffset);
+        const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+        // 当日のイベントを取得
+        const todayEvents = await db
+          .select()
+          .from(events)
+          .where(
+            and(
+              gte(events.eventDate, todayStart),
+              lte(events.eventDate, todayEnd)
+            )
+          );
+
+        // 当日のイベントがある店舗IDを取得
+        const storeIdsWithEvents = [...new Set(todayEvents.map(e => e.storeId))];
+
+        if (storeIdsWithEvents.length === 0) {
+          return [];
+        }
+
+        // 全店舗を取得してフィルタリング
+        const storesList = await db.select().from(stores);
+
+        // 指定された都道府県の店舗のみを抽出
+        const regionStores = storesList.filter(store =>
+          storeIdsWithEvents.includes(store.id) &&
+          input.prefectures.some(pref => store.address.includes(pref))
+        );
+
+        // 各店舗のイベント情報を取得
+        const result = await Promise.all(
+          regionStores.map(async (store) => {
+            const storeEvents = todayEvents.filter(e => e.storeId === store.id);
+
+            // 演者情報を取得
+            const eventsWithActors = await Promise.all(
+              storeEvents.map(async (event) => {
+                if (event.actorId) {
+                  const actorList = await db
+                    .select()
+                    .from(actors)
+                    .where(eq(actors.id, event.actorId))
+                    .limit(1);
+                  return {
+                    ...event,
+                    actor: actorList[0] || null,
+                  };
+                }
+                return { ...event, actor: null };
+              })
+            );
+
+            return {
+              ...store,
+              events: eventsWithActors,
+            };
+          })
+        );
+
+        return result;
+      }),
     detail: publicProcedure
       .input(z.object({ storeId: z.number() }))
       .query(async ({ input }) => {
