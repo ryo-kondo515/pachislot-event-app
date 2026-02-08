@@ -6,26 +6,31 @@ import {
   loadFavoriteAreas,
   saveFavoriteMachines,
   loadFavoriteMachines,
+  saveFavoriteStores,
+  loadFavoriteStores,
 } from '@/lib/storage';
 
 export function useFavorites() {
   const [favoriteActors, setFavoriteActors] = useState<string[]>([]);
   const [favoriteAreas, setFavoriteAreas] = useState<string[]>([]);
   const [favoriteMachines, setFavoriteMachines] = useState<string[]>([]);
+  const [favoriteStores, setFavoriteStores] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   // 初期データ読み込み
   useEffect(() => {
     async function loadData() {
       try {
-        const [actors, areas, machines] = await Promise.all([
+        const [actors, areas, machines, stores] = await Promise.all([
           loadFavoriteActors(),
           loadFavoriteAreas(),
           loadFavoriteMachines(),
+          loadFavoriteStores(),
         ]);
         setFavoriteActors(actors);
         setFavoriteAreas(areas);
         setFavoriteMachines(machines);
+        setFavoriteStores(stores);
       } catch (error) {
         console.error('Failed to load favorites:', error);
       } finally {
@@ -71,6 +76,18 @@ export function useFavorites() {
     });
   }, []);
 
+  // 店舗のお気に入り切り替え
+  const toggleFavoriteStore = useCallback(async (storeId: string) => {
+    setFavoriteStores((prev) => {
+      const newFavorites = prev.includes(storeId)
+        ? prev.filter((id) => id !== storeId)
+        : [...prev, storeId];
+
+      saveFavoriteStores(newFavorites).catch(console.error);
+      return newFavorites;
+    });
+  }, []);
+
   // お気に入りかどうかをチェック
   const isFavoriteActor = useCallback(
     (actorId: string) => favoriteActors.includes(actorId),
@@ -87,16 +104,24 @@ export function useFavorites() {
     [favoriteMachines]
   );
 
+  const isFavoriteStore = useCallback(
+    (storeId: string) => favoriteStores.includes(storeId),
+    [favoriteStores]
+  );
+
   return {
     favoriteActors,
     favoriteAreas,
     favoriteMachines,
+    favoriteStores,
     loading,
     toggleFavoriteActor,
     toggleFavoriteArea,
     toggleFavoriteMachine,
+    toggleFavoriteStore,
     isFavoriteActor,
     isFavoriteArea,
     isFavoriteMachine,
+    isFavoriteStore,
   };
 }

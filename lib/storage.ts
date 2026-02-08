@@ -4,6 +4,8 @@ const KEYS = {
   FAVORITE_ACTORS: '@favorite_actors',
   FAVORITE_AREAS: '@favorite_areas',
   FAVORITE_MACHINES: '@favorite_machines',
+  FAVORITE_STORES: '@favorite_stores',
+  SEARCH_HISTORY: '@search_history',
   NOTIFICATION_SETTINGS: '@notification_settings',
 } as const;
 
@@ -79,6 +81,71 @@ export async function loadFavoriteMachines(): Promise<string[]> {
   } catch (error) {
     console.error('Failed to load favorite machines:', error);
     return [];
+  }
+}
+
+/**
+ * お気に入り店舗を保存
+ */
+export async function saveFavoriteStores(storeIds: string[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.FAVORITE_STORES, JSON.stringify(storeIds));
+  } catch (error) {
+    console.error('Failed to save favorite stores:', error);
+    throw error;
+  }
+}
+
+/**
+ * お気に入り店舗を読み込み
+ */
+export async function loadFavoriteStores(): Promise<string[]> {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.FAVORITE_STORES);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Failed to load favorite stores:', error);
+    return [];
+  }
+}
+
+/**
+ * 検索履歴を保存（最大10件）
+ */
+export async function saveSearchHistory(query: string): Promise<void> {
+  try {
+    const history = await loadSearchHistory();
+    // 重複を削除して先頭に追加
+    const newHistory = [query, ...history.filter(q => q !== query)].slice(0, 10);
+    await AsyncStorage.setItem(KEYS.SEARCH_HISTORY, JSON.stringify(newHistory));
+  } catch (error) {
+    console.error('Failed to save search history:', error);
+    throw error;
+  }
+}
+
+/**
+ * 検索履歴を読み込み
+ */
+export async function loadSearchHistory(): Promise<string[]> {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.SEARCH_HISTORY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Failed to load search history:', error);
+    return [];
+  }
+}
+
+/**
+ * 検索履歴をクリア
+ */
+export async function clearSearchHistory(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(KEYS.SEARCH_HISTORY);
+  } catch (error) {
+    console.error('Failed to clear search history:', error);
+    throw error;
   }
 }
 

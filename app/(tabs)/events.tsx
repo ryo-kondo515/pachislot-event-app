@@ -1,8 +1,12 @@
-import { ScrollView, Text, View, FlatList } from "react-native";
+import { ScrollView, Text, View, FlatList, Pressable, Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { LoadingState } from "@/components/loading-state";
+import { ErrorState } from "@/components/error-state";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { getHotLevelColor, getHotLevelLabel } from "@/data/mock-data";
+import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
 interface EventWithDetails {
   id: number;
@@ -26,6 +30,7 @@ interface EventWithDetails {
 
 export default function EventsScreen() {
   const colors = useColors();
+  const router = useRouter();
 
   // イベント一覧を取得
   const eventsQuery = trpc.events.list.useQuery();
@@ -38,17 +43,27 @@ export default function EventsScreen() {
     return `${month}月${day}日(${weekday})`;
   };
 
+  const handleEventPress = (storeId: number) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    router.push(`/store/${storeId}` as any);
+  };
+
   const renderEventItem = ({ item }: { item: EventWithDetails }) => {
     return (
-      <View
-        style={{
+      <Pressable
+        onPress={() => item.store && handleEventPress(item.store.id)}
+        disabled={!item.store}
+        style={({ pressed }) => ({
           backgroundColor: colors.surface,
           padding: 16,
           marginBottom: 12,
           borderRadius: 12,
           borderWidth: 1,
           borderColor: colors.border,
-        }}
+          opacity: pressed ? 0.7 : 1,
+        })}
       >
         {/* イベント日付とアツさレベル */}
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -105,26 +120,35 @@ export default function EventsScreen() {
             {item.description}
           </Text>
         )}
-      </View>
+
+        {/* タップヒント */}
+        {item.store && (
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border }}>
+            <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>
+              タップして店舗詳細を見る
+            </Text>
+          </View>
+        )}
+      </Pressable>
     );
   };
 
   if (eventsQuery.isLoading) {
     return (
-      <ScreenContainer className="p-6">
-        <Text style={{ fontSize: 16, color: colors.muted, textAlign: "center" }}>
-          イベント情報を読み込んでいます...
-        </Text>
+      <ScreenContainer>
+        <LoadingState message="イベント情報を読み込んでいます..." />
       </ScreenContainer>
     );
   }
 
   if (eventsQuery.error) {
     return (
-      <ScreenContainer className="p-6">
-        <Text style={{ fontSize: 16, color: colors.error, textAlign: "center" }}>
-          エラーが発生しました: {eventsQuery.error.message}
-        </Text>
+      <ScreenContainer>
+        <ErrorState
+          title="イベント情報の取得に失敗しました"
+          message={eventsQuery.error.message || 'ネットワーク接続を確認してください。'}
+          onRetry={() => eventsQuery.refetch()}
+        />
       </ScreenContainer>
     );
   }

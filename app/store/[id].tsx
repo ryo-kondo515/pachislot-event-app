@@ -4,14 +4,18 @@ import * as Haptics from 'expo-haptics';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LoadingState } from '@/components/loading-state';
+import { ErrorState } from '@/components/error-state';
 import { useColors } from '@/hooks/use-colors';
 import { getHotLevelColor, getHotLevelLabel } from '@/data/mock-data';
 import { trpc } from '@/lib/trpc';
+import { useFavorites } from '@/hooks/use-favorites';
 
 export default function StoreDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const colors = useColors();
+  const { favoriteStores, toggleFavoriteStore, isFavoriteStore } = useFavorites();
 
   // APIで店舗詳細情報を取得
   const { data: storeDetail, isLoading, error } = trpc.stores.detail.useQuery(
@@ -19,19 +23,32 @@ export default function StoreDetailScreen() {
     { enabled: !!id && !isNaN(parseInt(id, 10)) }
   );
 
+  const handleToggleFavorite = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    toggleFavoriteStore(id);
+  };
+
+  const isFavorite = isFavoriteStore(id);
+
   if (isLoading) {
     return (
-      <ScreenContainer className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ color: colors.muted, marginTop: 16 }}>読み込み中...</Text>
+      <ScreenContainer>
+        <LoadingState message="店舗情報を読み込んでいます..." />
       </ScreenContainer>
     );
   }
 
   if (error || !storeDetail) {
     return (
-      <ScreenContainer className="flex-1 items-center justify-center">
-        <Text style={{ color: colors.foreground }}>店舗が見つかりません</Text>
+      <ScreenContainer>
+        <ErrorState
+          title="店舗情報の取得に失敗しました"
+          message={error?.message || '店舗が見つかりませんでした。URLが正しいか確認してください。'}
+          onRetry={() => router.back()}
+          retryLabel="戻る"
+        />
       </ScreenContainer>
     );
   }
@@ -64,6 +81,22 @@ export default function StoreDetailScreen() {
           >
             <IconSymbol name="chevron.left.forwardslash.chevron.right" size={24} color={colors.foreground} />
             <Text style={[styles.backText, { color: colors.foreground }]}>戻る</Text>
+          </Pressable>
+
+          {/* お気に入りボタン */}
+          <Pressable
+            onPress={handleToggleFavorite}
+            style={({ pressed }) => [
+              styles.favoriteButton,
+              { backgroundColor: colors.background },
+              pressed && { opacity: 0.6 },
+            ]}
+          >
+            <IconSymbol
+              name={isFavorite ? "heart.fill" : "heart"}
+              size={24}
+              color={isFavorite ? colors.primary : colors.muted}
+            />
           </Pressable>
         </View>
 
@@ -195,6 +228,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
     marginBottom: 8,
   },
@@ -206,6 +240,13 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  favoriteButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   card: {
     marginHorizontal: 16,

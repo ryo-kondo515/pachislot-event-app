@@ -35,10 +35,9 @@ export default function MapScreen() {
   });
   const [filteredStores, setFilteredStores] = useState<Store[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string | null>('kanto'); // デフォルトは関東
-  const [loadingRegions, setLoadingRegions] = useState<Set<string>>(new Set(['kanto']));
   const [loadedRegions, setLoadedRegions] = useState<Set<string>>(new Set()); // ロード完了した地域
   const [isRegionLoading, setIsRegionLoading] = useState(false); // 地域切り替え時のローディング
-  const [backgroundLoadStarted, setBackgroundLoadStarted] = useState(false); // バックグラウンドロード開始フラグ
+  const [legendCollapsed, setLegendCollapsed] = useState(false); // 凡例の折りたたみ状態
 
   // 優先地域（関東）のデータを取得
   const kantoRegion = REGIONS.find(r => r.id === 'kanto');
@@ -87,71 +86,51 @@ export default function MapScreen() {
       // 関東のデータを先に設定
       setAllStores(stores);
       setSortedStores(stores);
-      setLoadingRegions(prev => {
-        const next = new Set(prev);
-        next.delete('kanto');
-        return next;
-      });
       setLoadedRegions(prev => new Set([...prev, 'kanto']));
     }
   }, [kantoStoresData]);
 
-  // 関東のデータロード完了後、他の地域を順次ロード
-  useEffect(() => {
-    if (loadedRegions.has('kanto') && !backgroundLoadStarted) {
-      console.log('[Background] Starting background load for other regions...');
-      setBackgroundLoadStarted(true);
-
-      // 関東以外の地域を取得
-      const otherRegions = REGIONS.filter(r => r.id !== 'kanto');
-
-      // 各地域を順次ロード
-      const loadOtherRegions = async () => {
-        for (const region of otherRegions) {
-          try {
-            console.log(`[Background] Loading ${region.name}...`);
-            // 少し遅延させてAPIリクエストを分散
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const input = { prefectures: region.prefectures };
-            const response = await fetch(
-              '/api/trpc/stores.listByRegion?' + new URLSearchParams({
-                input: JSON.stringify(input)
-              })
-            );
-
-            if (response.ok) {
-              const data = await response.json();
-              const regionStores: Store[] = (data.result?.data || []).map((store: any) => ({
-                id: store.id.toString(),
-                name: store.name,
-                address: store.address,
-                latitude: parseFloat(store.latitude),
-                longitude: parseFloat(store.longitude),
-                hotLevel: store.events[0]?.hotLevel || 3,
-                machineCount: store.machineCount,
-                openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
-                isPremium: store.isPremium === 1,
-              }));
-
-              console.log(`[Background] ${region.name} loaded:`, regionStores.length, 'stores');
-              // 既存のデータに追加
-              setAllStores(prev => [...prev, ...regionStores]);
-              // ロード完了を記録
-              setLoadedRegions(prev => new Set([...prev, region.id]));
-            } else {
-              console.error(`[Background] Failed to load ${region.name}: HTTP ${response.status}`);
-            }
-          } catch (error) {
-            console.error(`[Background] Failed to load region ${region.id}:`, error);
-          }
-        }
-        console.log('[Background] All regions loaded');
-      };
-
-      loadOtherRegions();
+  // 選択された地域のデータを取得（関東以外）
+  const selectedRegionData = REGIONS.find(r => r.id === selectedRegion);
+  const { data: selectedRegionStores, isLoading: selectedRegionLoading } = trpc.stores.listByRegion.useQuery(
+    { prefectures: selectedRegionData?.prefectures || [] },
+    {
+      enabled: !!selectedRegionData && selectedRegion !== 'kanto',
+      staleTime: 5 * 60 * 1000, // 5分間キャッシュ
     }
-  }, [loadedRegions, backgroundLoadStarted]);
+  );
+
+  // 選択地域のデータを統合
+  useEffect(() => {
+    if (selectedRegion !== 'kanto' && selectedRegionStores && !loadedRegions.has(selectedRegion!)) {
+      console.log(`[Region] ${selectedRegion} data received:`, selectedRegionStores.length);
+      const stores: Store[] = selectedRegionStores.map((store: any) => ({
+        id: store.id.toString(),
+        name: store.name,
+        address: store.address,
+        latitude: parseFloat(store.latitude),
+        longitude: parseFloat(store.longitude),
+        hotLevel: store.events[0]?.hotLevel || 3,
+        machineCount: store.machineCount,
+        openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
+        isPremium: store.isPremium === 1,
+      }));
+
+      // 既存データから同じ地域のデータを削除してから追加
+      setAllStores(prev => {
+        const region = REGIONS.find(r => r.id === selectedRegion);
+        if (!region) return prev;
+
+        // 同じ地域の店舗を除外
+        const filtered = prev.filter(store =>
+          !region.prefectures.some(pref => store.address.includes(pref))
+        );
+        return [...filtered, ...stores];
+      });
+
+      setLoadedRegions(prev => new Set([...prev, selectedRegion!]));
+    }
+  }, [selectedRegionStores, selectedRegion, loadedRegions]);
 
   // 地方選択時に地図の表示範囲を調整
   useEffect(() => {
@@ -179,63 +158,14 @@ export default function MapScreen() {
     setSortedStores([...allStores]);
   }, [allStores]);
 
-  // 地方選択時にロード状態をチェックして、未ロードなら即座にロード
+  // 地域切り替え時のローディング状態管理
   useEffect(() => {
-    if (selectedRegion && !loadedRegions.has(selectedRegion) && !loadingRegions.has(selectedRegion)) {
-      console.log(`[Region] ${selectedRegion} is not loaded yet, loading now...`);
-      setIsRegionLoading(true);
-
-      // 即座にその地域のデータをロード
-      const region = REGIONS.find(r => r.id === selectedRegion);
-      if (region) {
-        const loadRegion = async () => {
-          try {
-            setLoadingRegions(prev => new Set([...prev, selectedRegion]));
-
-            const input = { prefectures: region.prefectures };
-            const response = await fetch(
-              '/api/trpc/stores.listByRegion?' + new URLSearchParams({
-                input: JSON.stringify(input)
-              })
-            );
-
-            if (response.ok) {
-              const data = await response.json();
-              const regionStores: Store[] = (data.result?.data || []).map((store: any) => ({
-                id: store.id.toString(),
-                name: store.name,
-                address: store.address,
-                latitude: parseFloat(store.latitude),
-                longitude: parseFloat(store.longitude),
-                hotLevel: store.events[0]?.hotLevel || 3,
-                machineCount: store.machineCount,
-                openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
-                isPremium: store.isPremium === 1,
-              }));
-
-              console.log(`[${region.name}] Loaded stores on demand:`, regionStores.length);
-              setAllStores(prev => [...prev, ...regionStores]);
-              setLoadedRegions(prev => new Set([...prev, selectedRegion]));
-              setIsRegionLoading(false);
-            }
-          } catch (error) {
-            console.error(`Failed to load region ${selectedRegion}:`, error);
-            setIsRegionLoading(false);
-          } finally {
-            setLoadingRegions(prev => {
-              const next = new Set(prev);
-              next.delete(selectedRegion);
-              return next;
-            });
-          }
-        };
-
-        loadRegion();
-      }
-    } else if (selectedRegion && loadedRegions.has(selectedRegion)) {
-      setIsRegionLoading(false);
+    if (selectedRegion === 'kanto') {
+      setIsRegionLoading(kantoLoading);
+    } else if (selectedRegion) {
+      setIsRegionLoading(selectedRegionLoading);
     }
-  }, [selectedRegion, loadedRegions, loadingRegions]);
+  }, [selectedRegion, kantoLoading, selectedRegionLoading]);
 
   // 検索・フィルター処理
   useEffect(() => {
@@ -520,22 +450,42 @@ export default function MapScreen() {
 
       {/* 凡例 */}
       <View style={[styles.legend, { backgroundColor: colors.surface }]}>
-        <Text style={[styles.legendTitle, { color: colors.foreground }]}>アツさレベル</Text>
-        <View style={styles.legendItems}>
-          {[5, 4, 3, 2, 1].map((level) => (
-            <View key={level} style={styles.legendItem}>
-              <View
-                style={[
-                  styles.legendDot,
-                  { backgroundColor: getHotLevelColor(level as any) },
-                ]}
-              />
-              <Text style={[styles.legendText, { color: colors.muted }]}>
-                {getHotLevelLabel(level as any)}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <Pressable
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+            setLegendCollapsed(!legendCollapsed);
+          }}
+          style={styles.legendHeader}
+        >
+          <Text style={[styles.legendTitle, { color: colors.foreground }]}>
+            アツさレベル
+          </Text>
+          <IconSymbol
+            name={legendCollapsed ? "chevron.down" : "chevron.up"}
+            size={16}
+            color={colors.muted}
+          />
+        </Pressable>
+
+        {!legendCollapsed && (
+          <View style={styles.legendItems}>
+            {[5, 4, 3, 2, 1].map((level) => (
+              <View key={level} style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: getHotLevelColor(level as any) },
+                  ]}
+                />
+                <Text style={[styles.legendText, { color: colors.muted }]}>
+                  {getHotLevelLabel(level as any)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* 店舗プレビューカード */}
@@ -726,10 +676,15 @@ const styles = StyleSheet.create({
     elevation: 4,
     zIndex: 80,
   },
+  legendHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   legendTitle: {
     fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
   },
   legendItems: {
     gap: 4,
@@ -753,7 +708,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     borderRadius: 16,
-    padding: 16,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.2,
@@ -769,7 +724,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   previewContent: {
-    gap: 8,
+    gap: 6,
   },
   previewHeader: {
     flexDirection: 'row',
@@ -797,37 +752,37 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   storeName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    marginTop: 4,
+    marginTop: 2,
   },
   storeAddress: {
-    fontSize: 13,
+    fontSize: 12,
   },
   storeInfo: {
     flexDirection: 'row',
-    gap: 16,
-    marginTop: 4,
+    gap: 12,
+    marginTop: 2,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   infoText: {
-    fontSize: 12,
+    fontSize: 11,
   },
   tapHint: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    marginTop: 8,
-    paddingTop: 12,
+    marginTop: 6,
+    paddingTop: 8,
     borderTopWidth: 1,
   },
   tapHintText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
 });
