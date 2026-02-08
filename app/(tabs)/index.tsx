@@ -132,26 +132,7 @@ export default function MapScreen() {
     }
   }, [selectedRegionStores, selectedRegion, loadedRegions]);
 
-  // 地方選択時に地図の表示範囲を調整
-  useEffect(() => {
-    if (webViewRef.current && selectedRegion) {
-      const region = REGIONS.find(r => r.id === selectedRegion);
-
-      if (region) {
-        // 地方選択時：地図の中心を移動し、境界を設定
-        webViewRef.current.postMessage(JSON.stringify({
-          type: 'centerMap',
-          latitude: region.center.latitude,
-          longitude: region.center.longitude,
-          zoom: region.zoom
-        }));
-        webViewRef.current.postMessage(JSON.stringify({
-          type: 'setRegionBounds',
-          bounds: region.bounds
-        }));
-      }
-    }
-  }, [selectedRegion]);
+  // 注: 地図の表示範囲調整は、フィルター処理のuseEffect内で実行されます
 
   // allStoresが更新されたらsortedStoresも更新
   useEffect(() => {
@@ -204,12 +185,24 @@ export default function MapScreen() {
     console.log('[Filter] Final filtered stores:', result.length);
     setFilteredStores(result);
 
-    // 地図にフィルタリング済みデータを送信
-    if (webViewRef.current) {
+    // 地図にフィルタリング済みデータを送信し、地図の中心も調整
+    if (webViewRef.current && region) {
       console.log('[Map] Sending stores to map:', result.length);
       webViewRef.current.postMessage(JSON.stringify({
         type: 'setStores',
         stores: result
+      }));
+
+      // 地図の中心を移動し、境界を設定
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'centerMap',
+        latitude: region.center.latitude,
+        longitude: region.center.longitude,
+        zoom: region.zoom
+      }));
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'setRegionBounds',
+        bounds: region.bounds
       }));
     }
   }, [allStores, searchQuery, filters, selectedRegion]);
