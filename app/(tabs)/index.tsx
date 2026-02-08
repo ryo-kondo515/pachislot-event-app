@@ -132,7 +132,25 @@ export default function MapScreen() {
     }
   }, [selectedRegionStores, selectedRegion, loadedRegions]);
 
-  // 注: 地図の表示範囲調整は、フィルター処理のuseEffect内で実行されます
+  // 地域選択時に即座に地図の中心を移動（データの有無にかかわらず）
+  useEffect(() => {
+    if (webViewRef.current && selectedRegion) {
+      const region = REGIONS.find(r => r.id === selectedRegion);
+      if (region) {
+        console.log('[Map] Moving map center to:', region.name);
+        webViewRef.current.postMessage(JSON.stringify({
+          type: 'centerMap',
+          latitude: region.center.latitude,
+          longitude: region.center.longitude,
+          zoom: region.zoom
+        }));
+        webViewRef.current.postMessage(JSON.stringify({
+          type: 'setRegionBounds',
+          bounds: region.bounds
+        }));
+      }
+    }
+  }, [selectedRegion]);
 
   // allStoresが更新されたらsortedStoresも更新
   useEffect(() => {
@@ -185,25 +203,24 @@ export default function MapScreen() {
     console.log('[Filter] Final filtered stores:', result.length);
     setFilteredStores(result);
 
-    // 地図にフィルタリング済みデータを送信し、地図の中心も調整
-    if (webViewRef.current && region) {
+    // 地図にフィルタリング済みデータを送信
+    if (webViewRef.current) {
       console.log('[Map] Sending stores to map:', result.length);
       webViewRef.current.postMessage(JSON.stringify({
         type: 'setStores',
         stores: result
       }));
 
-      // 地図の中心を移動し、境界を設定
-      webViewRef.current.postMessage(JSON.stringify({
-        type: 'centerMap',
-        latitude: region.center.latitude,
-        longitude: region.center.longitude,
-        zoom: region.zoom
-      }));
-      webViewRef.current.postMessage(JSON.stringify({
-        type: 'setRegionBounds',
-        bounds: region.bounds
-      }));
+      // データが存在する場合は地図の中心も調整（確実に表示するため）
+      if (result.length > 0 && region) {
+        console.log('[Map] Adjusting map center with data:', region.name);
+        webViewRef.current.postMessage(JSON.stringify({
+          type: 'centerMap',
+          latitude: region.center.latitude,
+          longitude: region.center.longitude,
+          zoom: region.zoom
+        }));
+      }
     }
   }, [allStores, searchQuery, filters, selectedRegion]);
 
