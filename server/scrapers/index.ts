@@ -3,7 +3,13 @@ import { scrapeHallNavi, getHeatLevel as getHeatLevelHallNavi, guessStoreAddress
 import { scrapeOffme, getHeatLevel as getHeatLevelOffme, guessStoreAddress as guessStoreAddressOffme } from "./offme";
 import { scrapeTouslo, getHeatLevel as getHeatLevelTouslo, guessStoreAddress as guessStoreAddressTouslo } from "./touslo";
 import { scrapeRaitenEx, getHeatLevel as getHeatLevelRaitenEx, guessStoreAddress as guessStoreAddressRaitenEx } from "./raitenex";
+import { scrapeHisshobon, getHeatLevel as getHeatLevelHisshobon, guessStoreAddress as guessStoreAddressHisshobon } from "./hisshobon";
+import { scrapeJanbari, getHeatLevel as getHeatLevelJanbari, guessStoreAddress as guessStoreAddressJanbari } from "./janbari";
+import { scrapeSlopachiStation, getHeatLevel as getHeatLevelSlopachiStation, guessStoreAddress as guessStoreAddressSlopachiStation } from "./slopachistation";
+import { scrapeDmmPachitown, getHeatLevel as getHeatLevelDmmPachitown, guessStoreAddress as guessStoreAddressDmmPachitown } from "./dmmpachitown";
+import { scrapePworld, getHeatLevel as getHeatLevelPworld, guessStoreAddress as guessStoreAddressPworld } from "./pworld";
 import { stores, events, actors } from "../../drizzle/schema-postgres";
+import { deduplicateEvents, generateDuplicationReport, normalizeStoreName } from "./deduplication-utils";
 import { eq, and } from "drizzle-orm";
 import { geocodeStore } from "../geocoding";
 import { findStoreOfficialUrl } from "../utils/store-url-finder";
@@ -13,6 +19,7 @@ export interface ScrapingResult {
   storesAdded: number;
   eventsAdded: number;
   actorsAdded: number;
+  duplicatesRemoved: number;
   errors: string[];
 }
 
@@ -25,6 +32,7 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
     storesAdded: 0,
     eventsAdded: 0,
     actorsAdded: 0,
+    duplicatesRemoved: 0,
     errors: [],
   };
 
@@ -34,46 +42,27 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
     const { cleanupPastEvents } = await import("./cleanup-past-events");
     await cleanupPastEvents();
 
+    // 全てのソースからイベントを収集
+    console.log("[Scraper] Collecting events from all sources...");
+    const allEvents: Array<{ event: ScrapedEvent; getHeatLevel: (eventType: string, rating?: number) => number; guessStoreAddress: (storeName: string, area: string) => string }> = [];
+
     // 1. drillermaguro.comからスクレイピング
     console.log("[Scraper] Starting drillermaguro.com scraping...");
     const drillerEvents = await scrapeDrillerMaguro();
-
-    // 1-2. スクレイピング結果をデータベースに保存
-    for (const scrapedEvent of drillerEvents) {
-      try {
-        await saveScrapedEvent(scrapedEvent, result, getHeatLevelDriller, guessStoreAddressDriller);
-      } catch (error) {
-        const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
-        console.error(`[Scraper] ${errorMsg}`);
-        result.errors.push(errorMsg);
-      }
-    }
+    drillerEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelDriller, guessStoreAddress: guessStoreAddressDriller }));
+    console.log(`[Scraper] Collected ${drillerEvents.length} events from drillermaguro.com`);
 
     // 2. hall-navi.comからスクレイピング
     console.log("[Scraper] Starting hall-navi.com scraping...");
     const hallNaviEvents = await scrapeHallNavi();
-    for (const scrapedEvent of hallNaviEvents) {
-      try {
-        await saveScrapedEvent(scrapedEvent, result, getHeatLevelHallNavi, guessStoreAddressHallNavi);
-      } catch (error) {
-        const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
-        console.error(`[Scraper] ${errorMsg}`);
-        result.errors.push(errorMsg);
-      }
-    }
+    hallNaviEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelHallNavi, guessStoreAddress: guessStoreAddressHallNavi }));
+    console.log(`[Scraper] Collected ${hallNaviEvents.length} events from hall-navi.com`);
 
     // 3. offme.jpからスクレイピング
     console.log("[Scraper] Starting offme.jp scraping...");
     const offmeEvents = await scrapeOffme();
-    for (const scrapedEvent of offmeEvents) {
-      try {
-        await saveScrapedEvent(scrapedEvent, result, getHeatLevelOffme, guessStoreAddressOffme);
-      } catch (error) {
-        const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
-        console.error(`[Scraper] ${errorMsg}`);
-        result.errors.push(errorMsg);
-      }
-    }
+    offmeEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelOffme, guessStoreAddress: guessStoreAddressOffme }));
+    console.log(`[Scraper] Collected ${offmeEvents.length} events from offme.jp`);
 
     // 4. touslo777souko.blog.jpからスクレイピング
     // 注意: tousloはエリア別のまとめページなので、個別店舗情報が取得できないため、現在は無効化
@@ -92,17 +81,76 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
     // 5. raiten-ex.comからスクレイピング
     console.log("[Scraper] Starting raiten-ex.com scraping...");
     const raitenExEvents = await scrapeRaitenEx();
-    for (const scrapedEvent of raitenExEvents) {
+    raitenExEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelRaitenEx, guessStoreAddress: guessStoreAddressRaitenEx }));
+    console.log(`[Scraper] Collected ${raitenExEvents.length} events from raiten-ex.com`);
+
+    // 6. 必勝本ホール情報からスクレイピング
+    console.log("[Scraper] Starting hisshobon-hall.info scraping...");
+    const hisshobonEvents = await scrapeHisshobon();
+    hisshobonEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelHisshobon, guessStoreAddress: guessStoreAddressHisshobon }));
+    console.log(`[Scraper] Collected ${hisshobonEvents.length} events from hisshobon-hall.info`);
+
+    // 7. ジャンバリTVポータルからスクレイピング
+    console.log("[Scraper] Starting jb-portal.com scraping...");
+    const janbariEvents = await scrapeJanbari();
+    janbariEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelJanbari, guessStoreAddress: guessStoreAddressJanbari }));
+    console.log(`[Scraper] Collected ${janbariEvents.length} events from jb-portal.com`);
+
+    // 8. スロパチステーションからスクレイピング
+    console.log("[Scraper] Starting 777.slopachi-station.com scraping...");
+    const slopachiStationEvents = await scrapeSlopachiStation();
+    slopachiStationEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelSlopachiStation, guessStoreAddress: guessStoreAddressSlopachiStation }));
+    console.log(`[Scraper] Collected ${slopachiStationEvents.length} events from 777.slopachi-station.com`);
+
+    // 9. DMMぱちタウンからスクレイピング
+    console.log("[Scraper] Starting p-town.dmm.com scraping...");
+    const dmmPachitownEvents = await scrapeDmmPachitown();
+    dmmPachitownEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelDmmPachitown, guessStoreAddress: guessStoreAddressDmmPachitown }));
+    console.log(`[Scraper] Collected ${dmmPachitownEvents.length} events from p-town.dmm.com`);
+
+    // 10. P-WORLDからスクレイピング
+    console.log("[Scraper] Starting p-world.co.jp scraping...");
+    const pworldEvents = await scrapePworld();
+    pworldEvents.forEach(event => allEvents.push({ event, getHeatLevel: getHeatLevelPworld, guessStoreAddress: guessStoreAddressPworld }));
+    console.log(`[Scraper] Collected ${pworldEvents.length} events from p-world.co.jp`);
+
+    // 重複チェック
+    console.log(`\n[Scraper] Collected total ${allEvents.length} events from all sources`);
+    console.log("[Scraper] Running deduplication...");
+    const { uniqueEvents, duplicates } = deduplicateEvents(allEvents.map(e => e.event));
+    result.duplicatesRemoved = duplicates.length;
+
+    console.log(`[Scraper] Removed ${duplicates.length} duplicate events`);
+    console.log(`[Scraper] ${uniqueEvents.length} unique events to save`);
+
+    if (duplicates.length > 0) {
+      const report = generateDuplicationReport(duplicates);
+      console.log(report);
+    }
+
+    // データベースに保存
+    console.log("\n[Scraper] Saving events to database...");
+    for (let i = 0; i < uniqueEvents.length; i++) {
+      const uniqueEvent = uniqueEvents[i];
+      const originalEventData = allEvents.find(e => e.event === uniqueEvent);
+
+      if (!originalEventData) continue;
+
       try {
-        await saveScrapedEvent(scrapedEvent, result, getHeatLevelRaitenEx, guessStoreAddressRaitenEx);
+        await saveScrapedEvent(
+          uniqueEvent,
+          result,
+          originalEventData.getHeatLevel,
+          originalEventData.guessStoreAddress
+        );
       } catch (error) {
-        const errorMsg = `Failed to save event: ${scrapedEvent.storeName} - ${error}`;
+        const errorMsg = `Failed to save event: ${uniqueEvent.storeName} - ${error}`;
         console.error(`[Scraper] ${errorMsg}`);
         result.errors.push(errorMsg);
       }
     }
 
-    console.log(`[Scraper] Completed: ${result.storesAdded} stores, ${result.eventsAdded} events, ${result.actorsAdded} actors`);
+    console.log(`\n[Scraper] Completed: ${result.storesAdded} stores, ${result.eventsAdded} events, ${result.actorsAdded} actors, ${result.duplicatesRemoved} duplicates removed`);
     
   } catch (error) {
     console.error("[Scraper] Fatal error:", error);
