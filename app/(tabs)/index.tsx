@@ -38,6 +38,8 @@ export default function MapScreen() {
   const [loadedRegions, setLoadedRegions] = useState<Set<string>>(new Set()); // ロード完了した地域
   const [isRegionLoading, setIsRegionLoading] = useState(false); // 地域切り替え時のローディング
   const [legendCollapsed, setLegendCollapsed] = useState(false); // 凡例の折りたたみ状態
+  const [isMapReady, setIsMapReady] = useState(false); // 地図の初期化完了フラグ
+  const [shouldLoadOtherRegions, setShouldLoadOtherRegions] = useState(false); // 他地域の読み込み開始フラグ
 
   // 優先地域（関東）のデータを取得
   const kantoRegion = REGIONS.find(r => r.id === 'kanto');
@@ -87,54 +89,103 @@ export default function MapScreen() {
       setAllStores(stores);
       setSortedStores(stores);
       setLoadedRegions(prev => new Set([...prev, 'kanto']));
-    }
-  }, [kantoStoresData]);
 
-  // 選択された地域のデータを取得（関東以外）
-  const selectedRegionData = REGIONS.find(r => r.id === selectedRegion);
-  const { data: selectedRegionStores, isLoading: selectedRegionLoading } = trpc.stores.listByRegion.useQuery(
-    { prefectures: selectedRegionData?.prefectures || [] },
-    {
-      enabled: !!selectedRegionData && selectedRegion !== 'kanto',
-      staleTime: 5 * 60 * 1000, // 5分間キャッシュ
+      // 関東データの読み込みが完了したら、他の地域の読み込みを開始
+      if (!shouldLoadOtherRegions) {
+        console.log('[Background] Starting to load other regions...');
+        setShouldLoadOtherRegions(true);
+      }
     }
+  }, [kantoStoresData, shouldLoadOtherRegions]);
+
+  // バックグラウンドで全地域のデータを取得（関東以外）
+  const otherRegionIds = ['hokkaido', 'tohoku', 'chubu', 'kinki', 'chugoku', 'shikoku', 'kyushu'];
+
+  const hokkaidoRegion = REGIONS.find(r => r.id === 'hokkaido');
+  const { data: hokkaidoStores } = trpc.stores.listByRegion.useQuery(
+    { prefectures: hokkaidoRegion?.prefectures || [] },
+    { enabled: shouldLoadOtherRegions && !!hokkaidoRegion, staleTime: 10 * 60 * 1000 }
   );
 
-  // 選択地域のデータを統合
+  const tohokuRegion = REGIONS.find(r => r.id === 'tohoku');
+  const { data: tohokuStores } = trpc.stores.listByRegion.useQuery(
+    { prefectures: tohokuRegion?.prefectures || [] },
+    { enabled: shouldLoadOtherRegions && !!tohokuRegion, staleTime: 10 * 60 * 1000 }
+  );
+
+  const chubuRegion = REGIONS.find(r => r.id === 'chubu');
+  const { data: chubuStores } = trpc.stores.listByRegion.useQuery(
+    { prefectures: chubuRegion?.prefectures || [] },
+    { enabled: shouldLoadOtherRegions && !!chubuRegion, staleTime: 10 * 60 * 1000 }
+  );
+
+  const kinkiRegion = REGIONS.find(r => r.id === 'kinki');
+  const { data: kinkiStores } = trpc.stores.listByRegion.useQuery(
+    { prefectures: kinkiRegion?.prefectures || [] },
+    { enabled: shouldLoadOtherRegions && !!kinkiRegion, staleTime: 10 * 60 * 1000 }
+  );
+
+  const chugokuRegion = REGIONS.find(r => r.id === 'chugoku');
+  const { data: chugokuStores } = trpc.stores.listByRegion.useQuery(
+    { prefectures: chugokuRegion?.prefectures || [] },
+    { enabled: shouldLoadOtherRegions && !!chugokuRegion, staleTime: 10 * 60 * 1000 }
+  );
+
+  const shikokuRegion = REGIONS.find(r => r.id === 'shikoku');
+  const { data: shikokuStores } = trpc.stores.listByRegion.useQuery(
+    { prefectures: shikokuRegion?.prefectures || [] },
+    { enabled: shouldLoadOtherRegions && !!shikokuRegion, staleTime: 10 * 60 * 1000 }
+  );
+
+  const kyushuRegion = REGIONS.find(r => r.id === 'kyushu');
+  const { data: kyushuStores } = trpc.stores.listByRegion.useQuery(
+    { prefectures: kyushuRegion?.prefectures || [] },
+    { enabled: shouldLoadOtherRegions && !!kyushuRegion, staleTime: 10 * 60 * 1000 }
+  );
+
+  // 各地域のデータを統合（バックグラウンド読み込み用）
   useEffect(() => {
-    if (selectedRegion !== 'kanto' && selectedRegionStores && !loadedRegions.has(selectedRegion!)) {
-      console.log(`[Region] ${selectedRegion} data received:`, selectedRegionStores.length);
-      const stores: Store[] = selectedRegionStores.map((store: any) => ({
-        id: store.id.toString(),
-        name: store.name,
-        address: store.address,
-        latitude: parseFloat(store.latitude),
-        longitude: parseFloat(store.longitude),
-        hotLevel: store.events[0]?.hotLevel || 3,
-        machineCount: store.machineCount,
-        openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
-        isPremium: store.isPremium === 1,
-      }));
+    const regionDataMap = [
+      { id: 'hokkaido', data: hokkaidoStores, region: hokkaidoRegion },
+      { id: 'tohoku', data: tohokuStores, region: tohokuRegion },
+      { id: 'chubu', data: chubuStores, region: chubuRegion },
+      { id: 'kinki', data: kinkiStores, region: kinkiRegion },
+      { id: 'chugoku', data: chugokuStores, region: chugokuRegion },
+      { id: 'shikoku', data: shikokuStores, region: shikokuRegion },
+      { id: 'kyushu', data: kyushuStores, region: kyushuRegion },
+    ];
 
-      // 既存データから同じ地域のデータを削除してから追加
-      setAllStores(prev => {
-        const region = REGIONS.find(r => r.id === selectedRegion);
-        if (!region) return prev;
+    regionDataMap.forEach(({ id, data, region }) => {
+      if (data && region && !loadedRegions.has(id)) {
+        console.log(`[Background] ${id} data received:`, data.length);
+        const stores: Store[] = data.map((store: any) => ({
+          id: store.id.toString(),
+          name: store.name,
+          address: store.address,
+          latitude: parseFloat(store.latitude),
+          longitude: parseFloat(store.longitude),
+          hotLevel: store.events[0]?.hotLevel || 3,
+          machineCount: store.machineCount,
+          openingHours: `${store.openingTime || '10:00'} - ${store.closingTime || '23:00'}`,
+          isPremium: store.isPremium === 1,
+        }));
 
-        // 同じ地域の店舗を除外
-        const filtered = prev.filter(store =>
-          !region.prefectures.some(pref => store.address.includes(pref))
-        );
-        return [...filtered, ...stores];
-      });
+        // 既存データから同じ地域のデータを除外してから追加
+        setAllStores(prev => {
+          const filtered = prev.filter(store =>
+            !region.prefectures.some(pref => store.address.includes(pref))
+          );
+          return [...filtered, ...stores];
+        });
 
-      setLoadedRegions(prev => new Set([...prev, selectedRegion!]));
-    }
-  }, [selectedRegionStores, selectedRegion, loadedRegions]);
+        setLoadedRegions(prev => new Set([...prev, id]));
+      }
+    });
+  }, [hokkaidoStores, tohokuStores, chubuStores, kinkiStores, chugokuStores, shikokuStores, kyushuStores, loadedRegions, hokkaidoRegion, tohokuRegion, chubuRegion, kinkiRegion, chugokuRegion, shikokuRegion, kyushuRegion]);
 
   // 地域選択時に即座に地図の中心を移動（データの有無にかかわらず）
   useEffect(() => {
-    if (webViewRef.current && selectedRegion) {
+    if (webViewRef.current && selectedRegion && isMapReady) {
       const region = REGIONS.find(r => r.id === selectedRegion);
       if (region) {
         console.log('[Map] Moving map center to:', region.name);
@@ -150,7 +201,7 @@ export default function MapScreen() {
         }));
       }
     }
-  }, [selectedRegion]);
+  }, [selectedRegion, isMapReady]);
 
   // allStoresが更新されたらsortedStoresも更新
   useEffect(() => {
@@ -162,9 +213,31 @@ export default function MapScreen() {
     if (selectedRegion === 'kanto') {
       setIsRegionLoading(kantoLoading);
     } else if (selectedRegion) {
-      setIsRegionLoading(selectedRegionLoading);
+      // バックグラウンドで読み込み済みかチェック
+      const isLoaded = loadedRegions.has(selectedRegion);
+      setIsRegionLoading(!isLoaded);
+
+      // まだ読み込まれていない場合は、読み込み完了を待つ
+      if (isLoaded) {
+        console.log(`[Region] ${selectedRegion} already loaded from background`);
+      }
     }
-  }, [selectedRegion, kantoLoading, selectedRegionLoading]);
+  }, [selectedRegion, kantoLoading, loadedRegions]);
+
+  // バックグラウンド読み込み完了の監視
+  useEffect(() => {
+    if (selectedRegion && selectedRegion !== 'kanto' && loadedRegions.has(selectedRegion)) {
+      setIsRegionLoading(false);
+    }
+
+    // 全地域の読み込みが完了したことをログに出力
+    const allRegions = ['kanto', 'hokkaido', 'tohoku', 'chubu', 'kinki', 'chugoku', 'shikoku', 'kyushu'];
+    const allLoaded = allRegions.every(regionId => loadedRegions.has(regionId));
+    if (allLoaded && loadedRegions.size === allRegions.length) {
+      console.log('[Background] All regions loaded successfully!');
+      console.log('[Background] Total stores:', allStores.length);
+    }
+  }, [loadedRegions, selectedRegion, allStores.length]);
 
   // 検索・フィルター処理
   useEffect(() => {
@@ -240,6 +313,8 @@ export default function MapScreen() {
       const data = JSON.parse(event.nativeEvent.data);
 
       if (data.type === 'mapReady') {
+        console.log('[Map] Map is ready');
+        setIsMapReady(true);
         handleMapReady();
       } else if (data.type === 'markerClick') {
         if (Platform.OS !== 'web') {
