@@ -272,6 +272,8 @@ const normalizeResponseFormat = ({
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   assertApiKey();
 
+  const isGemini = !!(ENV.geminiApiKey && ENV.geminiApiKey.trim().length > 0);
+
   const {
     messages,
     tools,
@@ -284,7 +286,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: ENV.geminiApiKey ? "gemini-2.0-flash-exp" : "gemini-2.5-flash",
+    model: isGemini ? "gemini-2.0-flash-exp" : "gemini-2.5-flash",
     messages: messages.map(normalizeMessage),
   };
 
@@ -298,9 +300,12 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   }
 
   payload.max_tokens = 32768;
-  payload.thinking = {
-    budget_tokens: 128,
-  };
+  // Gemini APIは現在thinkingパラメータをサポートしていないため、コメントアウト
+  // if (!isGemini) {
+  //   payload.thinking = {
+  //     budget_tokens: 128,
+  //   };
+  // }
 
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
