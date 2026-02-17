@@ -247,13 +247,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 12,
   },
   iconContainer: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   infoCard: {
     marginHorizontal: 16,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   infoText: {
     fontSize: 13,
