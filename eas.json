@@ -13,6 +13,7 @@
     "development": {
       "extends": "base",
       "developmentClient": true,
+      "channel": "development",
       "ios": {
         "simulator": false
       },
@@ -21,10 +22,12 @@
       }
     },
     "preview": {
-      "extends": "base"
+      "extends": "base",
+      "channel": "preview"
     },
     "production": {
-      "extends": "base"
+      "extends": "base",
+      "channel": "production"
     }
   }
 }
