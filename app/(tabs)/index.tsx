@@ -422,22 +422,24 @@ export default function MapScreen() {
               onPress={() => router.push(`/store/${store.id}` as any)}
               style={({ pressed }) => [
                 styles.storeCard,
-                { backgroundColor: colors.surface },
-                pressed && { opacity: 0.8 },
+                {
+                  backgroundColor: colors.surface,
+                  borderLeftColor: getHotLevelColor(store.hotLevel),
+                },
+                pressed && { opacity: 0.8, transform: [{ scale: 0.99 }] },
               ]}
             >
               <View style={styles.storeHeader}>
-                <View
-                  style={[
-                    styles.hotIndicator,
-                    { backgroundColor: getHotLevelColor(store.hotLevel) },
-                  ]}
-                />
-                <Text style={[styles.storeCardName, { color: colors.foreground }]}>
+                <Text style={[styles.storeCardName, { color: colors.foreground }]} numberOfLines={1}>
                   {store.name}
                 </Text>
+                <View style={[styles.webHotBadge, { backgroundColor: getHotLevelColor(store.hotLevel) }]}>
+                  <Text style={styles.webHotBadgeText}>
+                    {getHotLevelLabel(store.hotLevel)}
+                  </Text>
+                </View>
               </View>
-              <Text style={[styles.storeCardAddress, { color: colors.muted }]}>
+              <Text style={[styles.storeCardAddress, { color: colors.muted }]} numberOfLines={1}>
                 {store.address}
               </Text>
             </Pressable>
@@ -544,12 +546,13 @@ export default function MapScreen() {
           }}
           style={styles.legendHeader}
         >
+          <IconSymbol name="flame.fill" size={12} color={colors.primary} />
           <Text style={[styles.legendTitle, { color: colors.foreground }]}>
-            アツさレベル
+            アツさ
           </Text>
           <IconSymbol
             name={legendCollapsed ? "chevron.down" : "chevron.up"}
-            size={16}
+            size={12}
             color={colors.muted}
           />
         </Pressable>
@@ -575,15 +578,19 @@ export default function MapScreen() {
 
       {/* 店舗プレビューカード */}
       {selectedStore && (
-        <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
+        <View style={[styles.previewCard, {
+          backgroundColor: colors.surface,
+          borderColor: `${getHotLevelColor(selectedStore.hotLevel)}40`,
+        }]}>
           <Pressable
             onPress={closePreview}
             style={({ pressed }) => [
               styles.closeButton,
+              { backgroundColor: colors.background },
               pressed && { opacity: 0.6 },
             ]}
           >
-            <IconSymbol name="xmark" size={20} color={colors.muted} />
+            <IconSymbol name="xmark" size={16} color={colors.muted} />
           </Pressable>
 
           <Pressable
@@ -600,41 +607,43 @@ export default function MapScreen() {
                   { backgroundColor: getHotLevelColor(selectedStore.hotLevel) },
                 ]}
               >
+                <IconSymbol name="flame.fill" size={10} color="#FFFFFF" />
                 <Text style={styles.hotBadgeText}>
                   {getHotLevelLabel(selectedStore.hotLevel)}
                 </Text>
               </View>
               {selectedStore.isPremium && (
                 <View style={[styles.premiumTag, { backgroundColor: colors.gold }]}>
+                  <IconSymbol name="star.fill" size={10} color="#000000" />
                   <Text style={styles.premiumTagText}>優良店</Text>
                 </View>
               )}
             </View>
 
-            <Text style={[styles.storeName, { color: colors.foreground }]}>
+            <Text style={[styles.storeName, { color: colors.foreground }]} numberOfLines={1}>
               {selectedStore.name}
             </Text>
-            <Text style={[styles.storeAddress, { color: colors.muted }]}>
+            <Text style={[styles.storeAddress, { color: colors.muted }]} numberOfLines={1}>
               {selectedStore.address}
             </Text>
 
             <View style={styles.storeInfo}>
               <View style={styles.infoItem}>
-                <IconSymbol name="clock.fill" size={14} color={colors.muted} />
+                <IconSymbol name="clock.fill" size={13} color={colors.muted} />
                 <Text style={[styles.infoText, { color: colors.muted }]}>
                   {selectedStore.openingHours}
                 </Text>
               </View>
               <View style={styles.infoItem}>
-                <IconSymbol name="flame.fill" size={14} color={colors.muted} />
+                <IconSymbol name="flame.fill" size={13} color={colors.muted} />
                 <Text style={[styles.infoText, { color: colors.muted }]}>
                   {selectedStore.machineCount}台
                 </Text>
               </View>
               {selectedStore.distance !== undefined && (
                 <View style={styles.infoItem}>
-                  <IconSymbol name="location.fill" size={14} color={colors.muted} />
-                  <Text style={[styles.infoText, { color: colors.muted }]}>
+                  <IconSymbol name="location.fill" size={13} color={colors.primary} />
+                  <Text style={[styles.infoText, { color: colors.primary }]}>
                     {formatDistance(selectedStore.distance)}
                   </Text>
                 </View>
@@ -643,9 +652,9 @@ export default function MapScreen() {
 
             <View style={[styles.tapHint, { borderTopColor: colors.border }]}>
               <Text style={[styles.tapHintText, { color: colors.primary }]}>
-                タップして詳細を見る
+                詳細を見る
               </Text>
-              <IconSymbol name="chevron.right" size={16} color={colors.primary} />
+              <IconSymbol name="chevron.right" size={14} color={colors.primary} />
             </View>
           </Pressable>
         </View>
@@ -710,27 +719,35 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   storeCard: {
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
     marginBottom: 12,
+    borderLeftWidth: 4,
   },
   storeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 8,
-  },
-  hotIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    marginBottom: 6,
   },
   storeCardName: {
     fontSize: 16,
     fontWeight: '600',
+    flex: 1,
   },
   storeCardAddress: {
     fontSize: 13,
+  },
+  webHotBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  webHotBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   locationButton: {
     position: 'absolute',
@@ -764,7 +781,7 @@ const styles = StyleSheet.create({
   legendHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
     marginBottom: 8,
   },
   legendTitle: {
@@ -793,20 +810,25 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     borderRadius: 16,
-    padding: 12,
+    padding: 14,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
     elevation: 8,
     zIndex: 95,
   },
   closeButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
     zIndex: 1,
-    padding: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   previewContent: {
     gap: 6,
@@ -817,16 +839,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   hotBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   hotBadgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   premiumTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -834,7 +862,7 @@ const styles = StyleSheet.create({
   premiumTagText: {
     color: '#000',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   storeName: {
     fontSize: 16,

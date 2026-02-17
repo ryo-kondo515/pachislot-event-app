@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Text, View, ScrollView, Pressable, StyleSheet, Linking, Platform, ActivityIndicator } from 'react-native';
+import { Text, View, ScrollView, Pressable, StyleSheet, Linking, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { ScreenContainer } from '@/components/screen-container';
@@ -15,9 +15,8 @@ export default function StoreDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const colors = useColors();
-  const { favoriteStores, toggleFavoriteStore, isFavoriteStore } = useFavorites();
+  const { toggleFavoriteStore, isFavoriteStore } = useFavorites();
 
-  // APIで店舗詳細情報を取得
   const { data: storeDetail, isLoading, error } = trpc.stores.detail.useQuery(
     { storeId: parseInt(id, 10) },
     { enabled: !!id && !isNaN(parseInt(id, 10)) }
@@ -67,6 +66,10 @@ export default function StoreDetailScreen() {
     Linking.openURL(url);
   };
 
+  const topHotLevel = storeDetail.events.length > 0
+    ? Math.max(...storeDetail.events.map(e => e.hotLevel))
+    : null;
+
   return (
     <ScreenContainer edges={['top', 'left', 'right', 'bottom']}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -76,14 +79,13 @@ export default function StoreDetailScreen() {
             onPress={handleBack}
             style={({ pressed }) => [
               styles.backButton,
+              { backgroundColor: colors.background },
               pressed && { opacity: 0.6 },
             ]}
           >
-            <IconSymbol name="chevron.left.forwardslash.chevron.right" size={24} color={colors.foreground} />
-            <Text style={[styles.backText, { color: colors.foreground }]}>戻る</Text>
+            <IconSymbol name="chevron.left" size={20} color={colors.foreground} />
           </Pressable>
 
-          {/* お気に入りボタン */}
           <Pressable
             onPress={handleToggleFavorite}
             style={({ pressed }) => [
@@ -94,7 +96,7 @@ export default function StoreDetailScreen() {
           >
             <IconSymbol
               name={isFavorite ? "heart.fill" : "heart"}
-              size={24}
+              size={22}
               color={isFavorite ? colors.primary : colors.muted}
             />
           </Pressable>
@@ -102,13 +104,23 @@ export default function StoreDetailScreen() {
 
         {/* 店舗情報カード */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          {storeDetail.isPremium === 1 && (
-            <View style={styles.cardHeader}>
+          {/* プレミアム + アツさバッジ */}
+          <View style={styles.badgeRow}>
+            {storeDetail.isPremium === 1 && (
               <View style={[styles.premiumBadge, { backgroundColor: colors.gold }]}>
-                <Text style={styles.premiumBadgeText}>★ 優良店</Text>
+                <IconSymbol name="star.fill" size={12} color="#000000" />
+                <Text style={styles.premiumBadgeText}>優良店</Text>
               </View>
-            </View>
-          )}
+            )}
+            {topHotLevel !== null && (
+              <View style={[styles.hotLevelBadge, { backgroundColor: getHotLevelColor(topHotLevel as any) }]}>
+                <IconSymbol name="flame.fill" size={12} color="#FFFFFF" />
+                <Text style={styles.hotLevelBadgeText}>
+                  {getHotLevelLabel(topHotLevel as any)}
+                </Text>
+              </View>
+            )}
+          </View>
 
           <Text style={[styles.storeName, { color: colors.foreground }]}>
             {storeDetail.name}
@@ -116,21 +128,27 @@ export default function StoreDetailScreen() {
 
           <View style={styles.infoSection}>
             <View style={styles.infoRow}>
-              <IconSymbol name="location.fill" size={16} color={colors.muted} />
+              <View style={[styles.infoIconBg, { backgroundColor: `${colors.neonCyan}20` }]}>
+                <IconSymbol name="location.fill" size={14} color={colors.neonCyan} />
+              </View>
               <Text style={[styles.infoText, { color: colors.muted }]}>
                 {storeDetail.address}
               </Text>
             </View>
             {storeDetail.openingTime && storeDetail.closingTime && (
               <View style={styles.infoRow}>
-                <IconSymbol name="clock.fill" size={16} color={colors.muted} />
+                <View style={[styles.infoIconBg, { backgroundColor: `${colors.success}20` }]}>
+                  <IconSymbol name="clock.fill" size={14} color={colors.success} />
+                </View>
                 <Text style={[styles.infoText, { color: colors.muted }]}>
-                  営業時間: {storeDetail.openingTime}-{storeDetail.closingTime}
+                  {storeDetail.openingTime} - {storeDetail.closingTime}
                 </Text>
               </View>
             )}
             <View style={styles.infoRow}>
-              <IconSymbol name="flame.fill" size={16} color={colors.muted} />
+              <View style={[styles.infoIconBg, { backgroundColor: `${colors.warning}20` }]}>
+                <IconSymbol name="flame.fill" size={14} color={colors.warning} />
+              </View>
               <Text style={[styles.infoText, { color: colors.muted }]}>
                 設置台数: {storeDetail.machineCount}台
               </Text>
@@ -140,27 +158,40 @@ export default function StoreDetailScreen() {
 
         {/* イベント情報 */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            来店イベント情報
-          </Text>
+          <View style={styles.sectionHeader}>
+            <IconSymbol name="calendar.fill" size={18} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              来店イベント情報
+            </Text>
+            {storeDetail.events.length > 0 && (
+              <View style={[styles.eventCount, { backgroundColor: `${colors.primary}20` }]}>
+                <Text style={[styles.eventCountText, { color: colors.primary }]}>
+                  {storeDetail.events.length}件
+                </Text>
+              </View>
+            )}
+          </View>
 
           {storeDetail.events.length > 0 ? (
             <View style={styles.eventList}>
               {storeDetail.events.map((event) => (
                 <View
                   key={event.id}
-                  style={[styles.eventCard, { borderColor: colors.border }]}
+                  style={[styles.eventCard, {
+                    borderColor: colors.border,
+                    borderLeftColor: getHotLevelColor(event.hotLevel as any),
+                  }]}
                 >
                   <View style={styles.eventHeader}>
                     <View style={styles.eventDate}>
-                      <IconSymbol name="clock.fill" size={14} color={colors.primary} />
+                      <IconSymbol name="calendar.fill" size={14} color={colors.primary} />
                       <Text style={[styles.eventDateText, { color: colors.primary }]}>
                         {new Date(event.eventDate).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}
                       </Text>
                     </View>
                     <View style={[styles.hotBadge, { backgroundColor: getHotLevelColor(event.hotLevel as any) }]}>
-                      <IconSymbol name="flame.fill" size={12} color="#FFFFFF" />
-                      <Text style={[styles.hotBadgeText, { fontSize: 11 }]}>
+                      <IconSymbol name="flame.fill" size={10} color="#FFFFFF" />
+                      <Text style={styles.hotBadgeText}>
                         {getHotLevelLabel(event.hotLevel as any)}
                       </Text>
                     </View>
@@ -168,16 +199,19 @@ export default function StoreDetailScreen() {
 
                   {event.actor && (
                     <View style={styles.actorInfo}>
-                      <View style={[styles.actorAvatar, { backgroundColor: colors.primary }]}>
-                        <IconSymbol name="person.fill" size={20} color="#FFFFFF" />
+                      <View style={[styles.actorAvatar, { backgroundColor: `${colors.primary}30` }]}>
+                        <IconSymbol name="person.fill" size={18} color={colors.primary} />
                       </View>
                       <View style={styles.actorDetails}>
                         <Text style={[styles.actorName, { color: colors.foreground }]}>
                           {event.actor.name}
                         </Text>
-                        <Text style={[styles.actorRank, { color: colors.gold }]}>
-                          ランクスコア: {event.actor.rankScore}
-                        </Text>
+                        <View style={styles.rankRow}>
+                          <IconSymbol name="star.fill" size={12} color={colors.gold} />
+                          <Text style={[styles.actorRank, { color: colors.gold }]}>
+                            スコア: {event.actor.rankScore}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   )}
@@ -187,7 +221,7 @@ export default function StoreDetailScreen() {
                       onPress={() => handleOpenLink(storeDetail.officialUrl!)}
                       style={({ pressed }) => [
                         styles.linkButton,
-                        { backgroundColor: colors.background },
+                        { backgroundColor: `${colors.primary}15` },
                         pressed && { opacity: 0.7 },
                       ]}
                     >
@@ -195,6 +229,7 @@ export default function StoreDetailScreen() {
                       <Text style={[styles.linkText, { color: colors.primary }]}>
                         公式HPを見る
                       </Text>
+                      <IconSymbol name="chevron.right" size={12} color={colors.primary} />
                     </Pressable>
                   )}
                 </View>
@@ -202,7 +237,12 @@ export default function StoreDetailScreen() {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <IconSymbol name="info.circle.fill" size={32} color={colors.muted} />
+              <View style={[styles.emptyIconBg, { backgroundColor: `${colors.muted}15` }]}>
+                <IconSymbol name="calendar.fill" size={32} color={colors.muted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                イベント予定なし
+              </Text>
               <Text style={[styles.emptyText, { color: colors.muted }]}>
                 現在予定されているイベントはありません
               </Text>
@@ -210,7 +250,7 @@ export default function StoreDetailScreen() {
           )}
         </View>
 
-        {/* 広告エリア（プレースホルダー） */}
+        {/* 広告エリア */}
         <View style={[styles.adBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.adText, { color: colors.muted }]}>広告エリア</Text>
         </View>
@@ -233,47 +273,35 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   backButton: {
-    flexDirection: 'row',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
-  },
-  backText: {
-    fontSize: 16,
-    fontWeight: '500',
   },
   favoriteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   card: {
     marginHorizontal: 16,
     marginBottom: 16,
-    padding: 16,
+    padding: 18,
     borderRadius: 16,
   },
-  cardHeader: {
+  badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 12,
   },
-  hotBadge: {
+  premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  hotBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  premiumBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
@@ -281,7 +309,20 @@ const styles = StyleSheet.create({
   premiumBadgeText: {
     color: '#000',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  hotLevelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  hotLevelBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   storeName: {
     fontSize: 24,
@@ -289,21 +330,43 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   infoSection: {
-    gap: 10,
+    gap: 12,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  infoIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoText: {
     fontSize: 14,
     flex: 1,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 16,
+    flex: 1,
+  },
+  eventCount: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  eventCountText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   eventList: {
     gap: 12,
@@ -312,6 +375,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
+    borderLeftWidth: 4,
   },
   eventHeader: {
     flexDirection: 'row',
@@ -328,13 +392,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  sourceTag: {
-    paddingHorizontal: 8,
+  hotBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  sourceText: {
+  hotBadgeText: {
+    color: '#FFFFFF',
     fontSize: 11,
+    fontWeight: '700',
   },
   actorInfo: {
     flexDirection: 'row',
@@ -356,9 +425,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
   actorRank: {
     fontSize: 12,
-    marginTop: 2,
   },
   linkButton: {
     flexDirection: 'row',
@@ -366,16 +440,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   linkText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 32,
-    gap: 12,
+    gap: 8,
+  },
+  emptyIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyText: {
     fontSize: 14,
