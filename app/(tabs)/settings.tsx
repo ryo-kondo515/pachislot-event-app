@@ -191,26 +191,6 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* データソース情報 */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.muted }]}>データソース</Text>
-          
-          <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.infoText, { color: colors.muted }]}>
-              イベント情報は以下のソースから収集しています：
-            </Text>
-            <View style={styles.sourceList}>
-              <Text style={[styles.sourceItem, { color: colors.foreground }]}>• ドリラーマグロ公式</Text>
-              <Text style={[styles.sourceItem, { color: colors.foreground }]}>• ホールナビ</Text>
-              <Text style={[styles.sourceItem, { color: colors.foreground }]}>• オフミー</Text>
-              <Text style={[styles.sourceItem, { color: colors.foreground }]}>• 闘スロ777倉庫</Text>
-            </View>
-            <Text style={[styles.updateInfo, { color: colors.muted }]}>
-              最終更新: 2026/01/31 00:00
-            </Text>
-          </View>
-        </View>
-
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </ScreenContainer>
@@ -267,26 +247,6 @@ const styles = StyleSheet.create({
   settingSubtitle: {
     fontSize: 13,
     marginTop: 2,
-  },
-  infoCard: {
-    marginHorizontal: 16,
-    padding: 16,
-    borderRadius: 14,
-  },
-  infoText: {
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  sourceList: {
-    gap: 4,
-    marginBottom: 12,
-  },
-  sourceItem: {
-    fontSize: 14,
-  },
-  updateInfo: {
-    fontSize: 12,
-    fontStyle: 'italic',
   },
   bottomSpacer: {
     height: 100,
