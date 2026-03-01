@@ -2,8 +2,8 @@ name: Daily Scraping
 
 on:
   # 毎日0:01 JST (15:01 UTC) に自動実行
-  schedule:
-    - cron: '1 15 * * *'
+  # schedule:
+  #   - cron: '1 15 * * *'
 
   # 手動実行も可能（デバッグ用）
   workflow_dispatch:
