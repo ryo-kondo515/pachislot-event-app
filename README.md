@@ -349,7 +349,3 @@ pnpm drizzle-kit migrate
 ## ライセンス
 
 MIT License
-
-## 貢献
-
-プルリクエストを歓迎します。大きな変更の場合は、まずissueを開いて変更内容を議論してください。
