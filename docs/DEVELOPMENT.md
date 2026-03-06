@@ -49,11 +49,12 @@ Express + tRPCを使用したAPIサーバー:
 
 ### スクレイピング（server/scrapers/）
 
-複数のソースから情報を収集:
+複数のソース（10以上の情報サイト）から情報を収集:
 
-- `server/scrapers/drillermaguro.ts`: drillermaguro.com用スクレイパー
-- `server/scrapers/raitenex.ts`: raiten-ex.com用スクレイパー
 - `server/scrapers/index.ts`: スクレイピング統合処理
+- `server/scrapers/llm-parser.ts`: LLMパーサー
+- `server/scrapers/deduplication-utils.ts`: 重複除去ユーティリティ
+- その他、各ソース用のスクレイパーファイル
 
 ### ユーティリティ（server/utils/）
 

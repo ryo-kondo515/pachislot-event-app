@@ -231,18 +231,11 @@ pnpm drizzle-kit studio
 
 複数のソースサイトから自動的にイベント情報を収集するシステム。
 
-#### 対応ソース（10以上）
+#### 対応ソース
 
-- drillermaguro.com
-- hallnavi.jp
-- offme.jp
-- touslo.jp
-- raiten-ex.net
-- hisshobon.com
-- janbari.com
-- slopachistation.com
-- dmm-pachitown.com
-- p-world.co.jp
+複数の情報サイト（10以上）からイベント情報を収集しています。各ソースには専用のスクレイパーが実装されています。
+
+**実装ファイル**: `server/scrapers/`ディレクトリ内に各ソースのスクレイパーが配置されています。
 
 ### スクレイピングフロー
 
@@ -256,13 +249,13 @@ export async function runAllScrapers(): Promise<ScrapingResult> {
   const allEvents: Array<ScrapedEvent> = [];
 
   // 各ソースをスクレイピング
-  const drillerEvents = await scrapeDrillerMaguro();
-  allEvents.push(...drillerEvents);
+  const source1Events = await scrapeSource1();
+  allEvents.push(...source1Events);
 
-  const hallNaviEvents = await scrapeHallNavi();
-  allEvents.push(...hallNaviEvents);
+  const source2Events = await scrapeSource2();
+  allEvents.push(...source2Events);
 
-  // ... 他のソース
+  // ... 他のソース（10以上の情報サイト）
 
   // 3. 重複除去
   const deduplicatedEvents = deduplicateEvents(allEvents);
