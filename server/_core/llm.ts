@@ -212,7 +212,7 @@ const resolveApiUrl = () => {
     return `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`;
   }
 
-  return "https://forge.manus.im/v1/chat/completions";
+  return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 };
 
 const assertApiKey = () => {

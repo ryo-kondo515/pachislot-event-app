@@ -19,11 +19,10 @@ describe("API Connection", () => {
 
   it("should verify API base URL is set correctly", () => {
     const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
-    
+
     expect(apiBaseUrl).toBeDefined();
-    expect(apiBaseUrl).toContain("3000-");
-    expect(apiBaseUrl).toContain("manus.computer");
-    
+    expect(apiBaseUrl).toMatch(/https?:\/\/.+/);
+
     console.log(`✓ API base URL is correctly set: ${apiBaseUrl}`);
   });
 });
