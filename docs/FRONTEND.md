@@ -844,6 +844,6 @@ const styles = {
 
 ## 関連ドキュメント
 
-- [tRPCによる型安全なAPI提供](./TRPC.md)
+- [バックエンド技術スタック](./BACKEND.md)
 - [API仕様書](./API.md)
 - [開発者ガイド](./DEVELOPMENT.md)

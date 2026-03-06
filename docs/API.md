@@ -872,6 +872,7 @@ const {
 
 ## 参考リソース
 
+- [バックエンド技術スタック](./BACKEND.md)
 - [tRPC Documentation](https://trpc.io/)
 - [React Query Documentation](https://tanstack.com/query/latest)
 - [Zod Documentation](https://zod.dev/)
